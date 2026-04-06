@@ -1305,7 +1305,7 @@
 </script>
 
 <!-- ── IMPORT MODAL ── -->
-<div id="import-modal" style="position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px;display:none">
+<div id="import-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px;display:none">
   <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:540px;max-height:85vh;overflow:auto" onclick="event.stopPropagation()">
     <div style="padding:20px 24px 16px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between">
       <span style="font-weight:600;font-size:15px">Import Statement CSV</span>
@@ -1329,7 +1329,7 @@
 </div>
 
 <!-- ── BALANCE EDIT MODAL ── -->
-<div id="bal-modal" style="position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center">
+<div id="bal-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center">
   <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:14px;width:320px;padding:24px" onclick="event.stopPropagation()">
     <div style="font-weight:600;font-size:14px;margin-bottom:16px" id="bal-modal-title">Update Balance</div>
     <input type="number" id="bal-input" step="0.01" style="width:100%;background:#131316;color:#e8e8ec;border:1px solid #2a2a30;border-radius:8px;padding:10px 14px;font-size:15px;font-family:var(--mono);margin-bottom:16px">
@@ -1341,7 +1341,7 @@
 </div>
 
 <!-- ── DRILL DOWN MODAL ── -->
-<div id="drill-modal" style="position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px" onclick="closeDrill(event)">
+<div id="drill-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px" onclick="closeDrill(event)">
   <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:680px;max-height:85vh;overflow:auto" onclick="event.stopPropagation()">
     <div style="padding:18px 24px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#1e1e22;z-index:10">
       <span style="font-weight:600;font-size:15px" id="drill-title">Category</span>
@@ -1352,7 +1352,7 @@
 </div>
 
 <!-- ── TXN EDIT MODAL ── -->
-<div id="txn-modal" style="position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px" onclick="closeTxnModal(event)">
+<div id="txn-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px" onclick="closeTxnModal(event)">
   <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:500px" onclick="event.stopPropagation()">
     <div style="padding:18px 24px 14px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between">
       <span style="font-weight:600;font-size:15px">Edit Transaction</span>
@@ -1713,6 +1713,8 @@ function saveBalance() {
 
 // ── INIT ───────────────────────────────────────────────────────────────────
 loadState();
+APP.editingTxnIdx = null;
+APP.editingBalKey = null;
 renderSpending();
 
 // Balances restored above
