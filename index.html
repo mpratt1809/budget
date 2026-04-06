@@ -1323,13 +1323,11 @@
     </div>
     <div style="padding:20px 24px">
       <p style="font-size:13px;color:#888896;margin-bottom:16px;line-height:1.6">Upload a CSV from BofA or Chase. Auto-detects format, categorizes transactions, and updates your spending tracker.</p>
-      <div id="drop-zone" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='#2a2a30'" ondrop="handleDrop(event)" style="border:2px dashed #2a2a30;border-radius:12px;padding:0;text-align:center;cursor:pointer;transition:border-color .2s;position:relative;overflow:hidden">
-        <label for="csv-input" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px 24px;cursor:pointer;width:100%">
-          <div style="font-size:28px;margin-bottom:8px">📄</div>
-          <div style="font-size:14px;font-weight:500;margin-bottom:4px;color:#e8e8ec">Drop CSV here or click to browse</div>
-          <div style="font-size:12px;color:#888896">Bank of America · Chase · Generic</div>
-        </label>
-        <input type="file" id="csv-input" accept=".csv" onchange="handleFile(event)" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer">
+      <div id="drop-zone" ondragover="event.preventDefault();this.style.borderColor='#7c6af7'" ondragleave="this.style.borderColor='#2a2a30'" ondrop="handleDrop(event)" style="border:2px dashed #2a2a30;border-radius:12px;padding:36px 24px;text-align:center;transition:border-color .2s">
+        <div style="font-size:28px;margin-bottom:8px">📄</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:12px;color:#e8e8ec">Drop CSV here or click below</div>
+        <div style="font-size:12px;color:#888896;margin-bottom:16px">Bank of America · Chase · Generic</div>
+        <button type="button" id="pick-file-btn" style="background:#7c6af7;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Choose File</button>
       </div>
       <div id="import-log" style="display:none;background:#131316;border:1px solid #2a2a30;border-radius:8px;padding:12px;font-family:var(--mono);font-size:11px;color:#888896;max-height:140px;overflow-y:auto;margin-top:12px;line-height:1.8;white-space:pre"></div>
     </div>
@@ -1533,12 +1531,20 @@ function processCSV(text, fname) {
 // closeImport defined above
 function handleFile(e) {
   const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader(); r.onload = ev => processCSV(ev.target.result, f.name); r.readAsText(f);
+  processFile(f);
+}
+function processFile(f) {
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => processCSV(ev.target.result, f.name);
+  r.onerror = () => { document.getElementById('import-log').style.display='block'; document.getElementById('import-log').textContent='❌ Error reading file'; };
+  r.readAsText(f);
 }
 function handleDrop(e) {
-  e.preventDefault(); document.getElementById('drop-zone').style.borderColor='#2a2a30';
-  const f = e.dataTransfer.files[0]; if(!f) return;
-  const r = new FileReader(); r.onload = ev => processCSV(ev.target.result, f.name); r.readAsText(f);
+  e.preventDefault();
+  document.getElementById('drop-zone').style.borderColor='#2a2a30';
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
 }
 
 // ── SPENDING RENDERER ──────────────────────────────────────────────────────
@@ -1729,6 +1735,36 @@ Object.entries(BAL_IDS).forEach(([key,id])=>{
 if (APP.transactions.length) {
   document.getElementById('last-updated').textContent = `${APP.transactions.length} transactions loaded`;
 }
+
+// ── FILE PICKER ────────────────────────────────────────────────────────────
+document.addEventListener('click', function(e) {
+  var btn = e.target;
+  if (!btn) return;
+
+  // Import CSV button in header
+  if (btn.id === 'import-btn') {
+    e.stopPropagation();
+    openImport();
+    return;
+  }
+
+  // Choose File button inside modal
+  if (btn.id === 'pick-file-btn') {
+    e.stopPropagation();
+    var inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.csv,.CSV';
+    inp.style.cssText = 'position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0';
+    inp.addEventListener('change', function(ev) {
+      var f = ev.target.files && ev.target.files[0];
+      if (f) processFile(f);
+      if (inp.parentNode) inp.parentNode.removeChild(inp);
+    });
+    document.body.appendChild(inp);
+    setTimeout(function() { inp.click(); }, 50);
+    return;
+  }
+});
 </script>
 
 </body>
