@@ -1404,30 +1404,38 @@ const CAT_EMOJIS = {
 };
 
 const RULES = [
-  {r:/payroll|ferrovial|sbtpg|direct.?dep/i, c:'Income'},
-  {r:/rocket.?mortgage|mr.?cooper/i, c:'Mortgage'},
-  {r:/sofi/i, c:'Fixed Bills'},
+  {r:/payroll|ferrovial|sbtpg|direct.?dep|NSM.?DBA/i, c:'Income'},
+  {r:/zelle.?pay.*from|zelle.*from|BKOFAME/i, c:'Income'},
+  {r:/rocket.?mortgage|mr.?cooper|NSM.?DBA.*mortgage/i, c:'Mortgage'},
+  {r:/sofi.?bank|sofi.*pl/i, c:'Fixed Bills'},
   {r:/easton.?park|hoa/i, c:'Fixed Bills'},
   {r:/t.?mobile|at&t/i, c:'Fixed Bills'},
-  {r:/bluebonnet|centerpoint|cpenergy|city.?of.?austin/i, c:'Utilities'},
-  {r:/crunch|boxing|fitness|gym|whoop|austin.?women/i, c:'Subscriptions'},
+  {r:/bluebonnet|centerpoint|cpenergy|city.?of.?aus/i, c:'Utilities'},
+  {r:/crunch|boxing|fitness|gym|whoop/i, c:'Subscriptions'},
   {r:/chase.?credit|credit.?crd|citi.*card|discover.*pay|synchrony|affirm/i, c:'Debt Payments'},
-  {r:/netflix|peacock|spotify|siriusxm|apple.*bill|uber.*one|google.*one|shortwave|bespoke|linkedin|anthropic/i, c:'Subscriptions'},
-  {r:/doordash|grubhub|ubereats/i, c:'Dining Out'},
-  {r:/cenizo|sano.?market|radio.?east|chipotle|starbucks|gati|veracruz|bouldin|mammoth.?brew|buddha|crumpet|salt.?straw|highley/i, c:'Dining Out'},
-  {r:/heb|costco(?!.*gas)|trader.?joe|wheatsville|big.?brazos|home.?chef/i, c:'Groceries'},
-  {r:/chewy|viva.?raw|open.?farm|austin.?urban.?vet|petco/i, c:'Pets'},
-  {r:/peoples.?pharm|cvs|walgreens|pharmacy|drug|rx/i, c:'Pharmacy/Health'},
-  {r:/7.?eleven|shell|costco.*gas|circle.?k/i, c:'Gas'},
-  {r:/ntta|toll(?!.*auth)|parking/i, c:'Gas'},
-  {r:/amazon|target|walmart|homegoods|hobby.?lobby|uncommon|br.?factory/i, c:'Shopping'},
-  {r:/delta|united|expedia|airbnb|hotel|mammoth.?mtn|snowmobile/i, c:'Travel'},
+  {r:/online.?bank.*transfer.*to.?sav|transfer.*sav/i, c:'Savings'},
   {r:/wealthfront/i, c:'Savings'},
-  {r:/simplTX|jessie.?white|outwell/i, c:'FSA / Therapy'},
-  {r:/seat.?engine|theatre|alamo|trail.?of.?light|tks.?arb|paramount/i, c:'Entertainment'},
+  {r:/netflix|peacock|spotify|siriusxm|sirius|apple.*bill|uber.*one|google.*one|shortwave|bespoke|linkedin|anthropic/i, c:'Subscriptions'},
+  {r:/doordash|grubhub|ubereats/i, c:'Dining Out'},
+  {r:/TST\*CENIZ|cenizo/i, c:'Dining Out'},
+  {r:/TST\*SANO|sano.?market/i, c:'Dining Out'},
+  {r:/TST\*RADIO|radio.?east/i, c:'Dining Out'},
+  {r:/TST\*SALT|salt.?straw/i, c:'Dining Out'},
+  {r:/starbucks|chipotle|doordash|gati|veracruz|bouldin|mammoth.?brew|buddha|crumpet|june|alana|highley|mcdonalds|mcdonald/i, c:'Dining Out'},
+  {r:/heb|costco(?!.*gas)|trader.?joe|wheatsville|big.?brazos|home.?chef/i, c:'Groceries'},
+  {r:/chewy|viva.?raw|open.?farm|austin.?urban.?vet|vetcove|petco/i, c:'Pets'},
+  {r:/peoples.?pharm|cvs|walgreens|pharmacy|drug/i, c:'Pharmacy/Health'},
+  {r:/7.?eleven|shell|costco.*gas|circle.?k/i, c:'Gas'},
+  {r:/ntta|autocharge/i, c:'Gas'},
+  {r:/amazon|target|walmart|homegoods|hobby.?lobby|uncommon|br.?factory|east.?austin.?succ/i, c:'Shopping'},
+  {r:/delta|united|expedia|airbnb|hotel|mammoth.?mtn|snowmobile|captain.?dave|seat.?engine/i, c:'Travel'},
+  {r:/JESSIE.?WH|simplTX|outwell/i, c:'FSA / Therapy'},
+  {r:/alamo|trail.?of.?light|tks.?arb|paramount|austin.?theatre/i, c:'Entertainment'},
+  {r:/SHORTWA/i, c:'Subscriptions'},
   {r:/vivint|home.?team.?pest|radiant.?plumb|austin.?bin.?wash|westbank/i, c:'Fixed Bills'},
-  {r:/zelle|venmo|paypal/i, c:'Transfers'},
-  {r:/strong.?paws/i, c:'Other'},
+  {r:/zelle.?pay.*to|venmo|paypal/i, c:'Transfers'},
+  {r:/strong.?paws|donation/i, c:'Other'},
+  {r:/overdraft.?prot/i, c:'Transfers'},
 ];
 
 function categorize(desc) {
@@ -1464,9 +1472,10 @@ function f$c(n) { return Math.abs(n).toLocaleString('en-US',{style:'currency',cu
 
 // ── CSV PARSING ────────────────────────────────────────────────────────────
 function detectFmt(headers) {
-  const h = headers.map(x=>(x||'').toLowerCase().trim());
+  const h = headers.map(x=>(x||'').toLowerCase().trim().replace(/"/g,''));
   if (h.some(x=>x.includes('running'))) return 'bofa';
-  if (h.includes('transaction date') || h.includes('post date')) return 'chase';
+  if (h.some(x=>x.includes('transaction date')) || h.some(x=>x.includes('post date'))) return 'chase';
+  if (h.includes('date') && h.includes('description') && h.includes('amount')) return 'bofa';
   return 'generic';
 }
 
@@ -1474,22 +1483,41 @@ function parseRows(rows, fmt) {
   const txns = [];
   for (const r of rows) {
     let date='', desc='', amt=0;
+    // Normalize keys - strip quotes and whitespace
+    const norm = {};
+    Object.keys(r).forEach(k => { norm[k.trim().replace(/"/g,'')] = (r[k]||'').trim().replace(/"/g,''); });
+
     if (fmt==='bofa') {
-      date = r['Date']||''; desc = r['Description']||'';
-      amt = parseFloat((r['Amount']||'0').replace(/[$,]/g,''));
+      date = norm['Date']||'';
+      desc = norm['Description']||'';
+      amt  = parseFloat((norm['Amount']||'0').replace(/[$,\s]/g,''));
     } else if (fmt==='chase') {
-      date = r['Transaction Date']||r['Post Date']||'';
-      desc = r['Description']||''; 
-      amt = parseFloat((r['Amount']||'0').replace(/[$,]/g,''));
+      date = norm['Transaction Date']||norm['Post Date']||'';
+      desc = norm['Description']||'';
+      amt  = parseFloat((norm['Amount']||'0').replace(/[$,\s]/g,''));
     } else {
-      const keys = Object.keys(r);
+      const keys = Object.keys(norm);
       const dk = keys.find(k=>/date/i.test(k))||keys[0];
-      const ek = keys.find(k=>/desc|memo|name/i.test(k))||keys[1];
+      const ek = keys.find(k=>/desc|memo|name|payee/i.test(k))||keys[1];
       const ak = keys.find(k=>/amount|amt/i.test(k))||keys[2];
-      date=r[dk]||''; desc=r[ek]||''; amt=parseFloat((r[ak]||'0').replace(/[$,()]/g,''));
+      date=norm[dk]||''; desc=norm[ek]||'';
+      amt=parseFloat((norm[ak]||'0').replace(/[$,\s()]/g,''));
     }
-    if (!date||!desc||isNaN(amt)) continue;
-    txns.push({id:Math.random().toString(36).slice(2), date:date.trim(), desc:desc.trim(), amount:amt, category:categorize(desc), notes:''});
+
+    // Skip non-transaction rows
+    if (!date || !desc || isNaN(amt)) continue;
+    if (desc.toLowerCase().includes('beginning balance')) continue;
+    if (desc.toLowerCase().includes('keep the change')) continue;
+    if (desc.toLowerCase().includes('ending balance')) continue;
+
+    txns.push({
+      id: Math.random().toString(36).slice(2),
+      date: date.trim(),
+      desc: desc.trim(),
+      amount: amt,
+      category: categorize(desc),
+      notes: ''
+    });
   }
   return txns;
 }
@@ -1497,16 +1525,34 @@ function parseRows(rows, fmt) {
 function processCSV(text, fname) {
   const log = document.getElementById('import-log');
   log.style.display = 'block';
-  log.textContent = `Parsing ${fname}...
-`;
-  
-  const result = Papa.parse(text, {header:true, skipEmptyLines:true, trimHeaders:true});
+  log.textContent = 'Parsing ' + fname + '...\n';
+
+  // BofA CSVs have a 6-row summary block before the real headers at row 7
+  // Detect and skip it by finding the line that starts with "Date,"
+  var lines = text.split('\n');
+  var headerIdx = 0;
+  for (var i = 0; i < Math.min(lines.length, 15); i++) {
+    var l = lines[i].trim();
+    if (l.match(/^Date[,\t]/i) || l.match(/^"Date"[,\t]/i)) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx > 0) {
+    log.textContent += 'Skipping ' + headerIdx + ' summary rows (BofA format)\n';
+    text = lines.slice(headerIdx).join('\n');
+  }
+
+  const result = Papa.parse(text, {header:true, skipEmptyLines:true, dynamicTyping:false});
   const rows = result.data;
   if (!rows.length) { log.textContent += 'No rows found\n'; return; }
-  
-  const fmt = detectFmt(Object.keys(rows[0]));
-  log.textContent += `Format: ${fmt.toUpperCase()}
-`;
+
+  // Log the detected headers so we can debug
+  const headers = Object.keys(rows[0]);
+  log.textContent += 'Headers: ' + headers.join(', ') + '\n';
+
+  const fmt = detectFmt(headers);
+  log.textContent += 'Format: ' + fmt.toUpperCase() + '\n';
   
   const parsed = parseRows(rows, fmt);
   const existing = new Set(APP.transactions.map(t=>`${t.date}|${t.amount}|${t.desc.slice(0,20)}`));
