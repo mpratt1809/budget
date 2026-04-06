@@ -1302,6 +1302,16 @@
       });
     }, 200);
   });
+
+  function openImport() {
+    var m = document.getElementById('import-modal');
+    if (!m) return;
+    m.style.display = 'flex';
+  }
+  function closeImport() {
+    var m = document.getElementById('import-modal');
+    if (m) m.style.display = 'none';
+  }
 </script>
 
 <!-- ── IMPORT MODAL ── -->
@@ -1517,21 +1527,8 @@ function processCSV(text, fname) {
 }
 
 // ── IMPORT HANDLERS ────────────────────────────────────────────────────────
-function openImport() {
-  var m = document.getElementById('import-modal');
-  m.style.position = 'fixed';
-  m.style.inset = '0';
-  m.style.background = 'rgba(0,0,0,0.85)';
-  m.style.zIndex = '9999';
-  m.style.display = 'flex';
-  m.style.alignItems = 'center';
-  m.style.justifyContent = 'center';
-  m.style.padding = '20px';
-  document.getElementById('import-log').style.display='none';
-  document.getElementById('import-log').textContent='';
-  document.getElementById('csv-input').value='';
-}
-function closeImport() { document.getElementById('import-modal').style.display='none'; }
+// openImport defined in first script block above
+// closeImport defined above
 function handleFile(e) {
   const f = e.target.files[0]; if(!f) return;
   const r = new FileReader(); r.onload = ev => processCSV(ev.target.result, f.name); r.readAsText(f);
