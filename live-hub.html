@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinanceHub — Meagan Pratt</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root {
+    --bg:        #0f0f11;
+    --surface:   #17171a;
+    --card:      #1e1e22;
+    --border:    #2a2a30;
+    --accent:    #7c6af7;
+    --accent2:   #4fc38a;
+    --warn:      #f0a048;
+    --danger:    #e05555;
+    --text:      #e8e8ec;
+    --muted:     #888896;
+    --mono:      'DM Mono', monospace;
+    --sans:      'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 0 0 80px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .header-meta span { color: var(--accent2); }
+
+  /* ── PAGE LAYOUT ── */
+  .page { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+
+  .page-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .page-sub {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-bottom: 32px;
+  }
+
+  /* ── SUMMARY STRIP ── */
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-label {
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--mono);
+    letter-spacing: -1px;
+  }
+  .stat-value.green { color: var(--accent2); }
+  .stat-value.red   { color: var(--danger); }
+  .stat-value.warn  { color: var(--warn); }
+  .stat-value.purple{ color: var(--accent); }
+  .stat-sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+
+  /* ── SECTION GRID ── */
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-1 { grid-template-columns: 1fr; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #3a3a44; }
+
+  .card-header {
+    padding: 16px 20px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .card.open .card-header { border-bottom-color: var(--border); }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .card-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .card-badge {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .badge-red    { color: var(--danger); border-color: #e0555533; background: #e0555510; }
+  .badge-green  { color: var(--accent2); border-color: #4fc38a33; background: #4fc38a10; }
+  .badge-warn   { color: var(--warn); border-color: #f0a04833; background: #f0a04810; }
+  .badge-purple { color: var(--accent); border-color: #7c6af733; background: #7c6af710; }
+
+  .chevron {
+    color: var(--muted);
+    font-size: 12px;
+    transition: transform 0.25s;
+    margin-left: 8px;
+  }
+  .card.open .chevron { transform: rotate(180deg); }
+
+  .card-body {
+    display: none;
+    padding: 16px 20px 20px;
+  }
+  .card.open .card-body { display: block; }
+
+  /* ── ROW ITEMS ── */
+  .row-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .row-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .row-label { color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .row-sub   { font-size: 10px; color: var(--muted); font-family: var(--mono); display: block; margin-top: 2px; }
+  .row-amt   { font-family: var(--mono); font-size: 13px; font-weight: 500; text-align: right; flex-shrink: 0; }
+  .row-amt.red    { color: var(--danger); }
+  .row-amt.green  { color: var(--accent2); }
+  .row-amt.warn   { color: var(--warn); }
+  .row-amt.muted  { color: var(--muted); }
+  .row-due { font-size: 10px; color: var(--muted); font-family: var(--mono); text-align: right; }
+
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot-red    { background: var(--danger); }
+  .dot-green  { background: var(--accent2); }
+  .dot-warn   { background: var(--warn); }
+  .dot-purple { background: var(--accent); }
+  .dot-muted  { background: var(--muted); }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap { margin: 8px 0; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; font-family: var(--mono);
+    color: var(--muted); margin-bottom: 5px;
+  }
+  .progress-track {
+    height: 6px; background: var(--surface);
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .progress-fill {
+    height: 100%; border-radius: 10px;
+    transition: width 0.8s cubic-bezier(.4,0,.2,1);
+  }
+  .fill-red    { background: linear-gradient(90deg, var(--danger), #e0778a); }
+  .fill-green  { background: linear-gradient(90deg, var(--accent2), #82e0b0); }
+  .fill-warn   { background: linear-gradient(90deg, var(--warn), #f0c070); }
+  .fill-purple { background: linear-gradient(90deg, var(--accent), #a08af7); }
+
+  /* ── BUDGET BARS (Actual vs Target) ── */
+  .budget-row { margin: 10px 0; }
+  .budget-meta {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12px; margin-bottom: 5px;
+  }
+  .budget-name { color: var(--text); font-weight: 500; }
+  .budget-nums { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .budget-nums .over  { color: var(--danger); font-weight: 600; }
+  .budget-nums .under { color: var(--accent2); font-weight: 600; }
+  .budget-track {
+    height: 8px; background: var(--surface);
+    border-radius: 10px; overflow: visible;
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .budget-target-line {
+    position: absolute; top: -3px; bottom: -3px;
+    width: 2px; background: var(--muted); border-radius: 2px;
+    z-index: 2;
+  }
+  .budget-actual {
+    height: 100%; border-radius: 10px;
+    min-width: 4px;
+    transition: width 0.8s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ── ACTION ITEMS ── */
+  .action-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .action-item:last-child { border-bottom: none; }
+  .action-check {
+    width: 18px; height: 18px; border-radius: 4px;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    font-size: 11px;
+  }
+  .action-item.done .action-check {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: #0f0f11;
+  }
+  .action-item.done .action-text { text-decoration: line-through; color: var(--muted); }
+  .action-text { font-size: 13px; flex: 1; line-height: 1.4; }
+  .action-tag {
+    font-size: 10px; font-family: var(--mono);
+    padding: 2px 8px; border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted); flex-shrink: 0; margin-top: 1px;
+    white-space: nowrap;
+  }
+  .tag-urgent { color: var(--danger); border-color: #e0555533; background: #e0555510; }
+  .tag-soon   { color: var(--warn); border-color: #f0a04833; background: #f0a04810; }
+  .tag-ongoing{ color: var(--accent); border-color: #7c6af733; background: #7c6af710; }
+
+  /* ── CASHFLOW TIMELINE ── */
+  .timeline { position: relative; padding-left: 20px; }
+  .timeline::before {
+    content: '';
+    position: absolute; left: 6px; top: 8px; bottom: 8px;
+    width: 1px; background: var(--border);
+  }
+  .tl-item {
+    position: relative; margin-bottom: 14px;
+    display: flex; align-items: flex-start; gap: 14px;
+  }
+  .tl-dot {
+    position: absolute; left: -17px; top: 4px;
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 2px solid var(--bg);
+    flex-shrink: 0;
+  }
+  .tl-date { font-family: var(--mono); font-size: 11px; color: var(--muted); min-width: 52px; padding-top: 1px; }
+  .tl-label { font-size: 12px; flex: 1; }
+  .tl-bal {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    text-align: right; min-width: 72px;
+  }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 28px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  .total-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0 0;
+    font-weight: 600; font-size: 13px;
+    border-top: 1px solid var(--border);
+    margin-top: 6px;
+  }
+  .total-row .row-amt { font-size: 15px; }
+
+  /* ── NOTES ── */
+  .note {
+    font-size: 11px; color: var(--muted);
+    font-family: var(--mono);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+  .note.warn  { border-color: #f0a04833; color: var(--warn); background: #f0a04808; }
+  .note.green { border-color: #4fc38a33; color: var(--accent2); background: #4fc38a08; }
+  .note.red   { border-color: #e0555533; color: var(--danger); background: #e0555508; }
+
+  /* ── PAYCHECK SWITCHER ── */
+  .pc-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .pc-tab {
+    padding: 6px 14px; border-radius: 8px; font-size: 12px;
+    font-family: var(--mono); cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); transition: all 0.2s;
+  }
+  .pc-tab.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  .pc-section { display: none; }
+  .pc-section.active { display: block; }
+
+  /* ── MILESTONE ── */
+  .milestone {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .milestone:last-child { border-bottom: none; }
+  .ms-icon { font-size: 18px; flex-shrink: 0; }
+  .ms-text { flex: 1; }
+  .ms-date { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .ms-done { color: var(--muted); text-decoration: line-through; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .summary-strip { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ── ANIMATIONS ── */
+  .card-body { animation: none; }
+  .card.open .card-body {
+    animation: fadeSlide 0.2s ease;
+  }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .page { animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FinanceHub</div>
+  <div class="header-actions" style="display:flex;gap:8px;align-items:center"><span style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="last-updated"></span><button onclick="openImport()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer">+ Import CSV</button></div>
+  <div class="header-meta">
+    MEAGAN E. PRATT &nbsp;·&nbsp; <span>April 2026</span>
+  </div>
+</header>
+
+<div class="page">
+
+  <div class="page-title">💰 Your Money</div>
+  <div class="page-sub">Personal finance dashboard · Updated from confirmed statements</div>
+
+  <!-- ── SUMMARY STRIP ── -->
+  <div class="summary-strip">
+    <div class="stat-card">
+      <div class="stat-label">Monthly Take-Home</div>
+      <div class="stat-value green">$8,466</div>
+      <div class="stat-sub">2 paychecks · $4,233 each</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Debt (Meagan)</div>
+      <div class="stat-value red">$46,922</div>
+      <div class="stat-sub">Chase + SoFi + Affirm</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Retirement Savings</div>
+      <div class="stat-value purple">$250,241</div>
+      <div class="stat-sub">4 Fidelity accounts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">BofA Cash Buffer</div>
+      <div class="stat-value warn">$5,252</div>
+      <div class="stat-sub">Checking + Savings combined</div>
+    </div>
+  </div>
+
+  <!-- ════════════ SECTION: INCOME & BILLS ════════════ -->
+  <div class="section-label">Income &amp; Fixed Bills</div>
+  <div class="grid grid-2">
+
+    <!-- INCOME -->
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#4fc38a15">💵</div>
+          Income
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-green">$8,466/mo</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row-item">
+          <div class="row-label">
+            <span class="dot dot-green"></span>
+            <div>
+              Ferrovial (Meagan)
+              <span class="row-sub">Every other Friday · direct deposit</span>
+            </div>
+          </div>
+          <div>
+            <div class="row-amt green">$4,233.08</div>
+            <div class="row-due">per paycheck</div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-label">
+            <span class="dot dot-muted"></span>
+            <div>
+              Sky's unemployment
+              <span class="row-sub">Irregular · not budgeted</span>
+            </div>
+          </div>
+          <div>
+            <div class="row-amt muted">~$500</div>
+            <div class="row-due">→ 100% to Chase</div>
+          </div>
+        </div>
+        <div class="total-row">
+          <span>Monthly base income</span>
+          <span class="row-amt green">$8,466.16</span>
+        </div>
+        <div class="note green">Next paycheck: Apr 17 · Then May 1 · May 15</div>
+      </div>
+    </div>
+
+    <!-- FIXED BILLS -->
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#e0555515">🏠</div>
+          Fixed Bills
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-red">$5,282/mo</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-red"></span><div>Mortgage (Rocket)<span class="row-sub">Confirmed 3rd · autopay ✅</span></div></div>
+          <div><div class="row-amt red">$2,590.87</div><div class="row-due">3rd</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-red"></span><div>SoFi Personal Loan<span class="row-sub">Confirmed 5th–6th · ends Aug 2027</span></div></div>
+          <div><div class="row-amt red">$1,807.80</div><div class="row-due">5th–6th</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>HOA (Easton Park)<span class="row-sub">Confirmed 6th</span></div></div>
+          <div><div class="row-amt">$80.00</div><div class="row-due">6th</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Bluebonnet Electric<span class="row-sub">Confirmed ~16th</span></div></div>
+          <div><div class="row-amt">$150.61</div><div class="row-due">~16th</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>T-Mobile<span class="row-sub">Confirmed 23rd</span></div></div>
+          <div><div class="row-amt">$125.00</div><div class="row-due">23rd</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>City of Austin<span class="row-sub">Confirmed ~18th · varies</span></div></div>
+          <div><div class="row-amt">$119.04</div><div class="row-due">~18th</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>CenterPoint Gas<span class="row-sub">Confirmed ~17th</span></div></div>
+          <div><div class="row-amt">$43.80</div><div class="row-due">~17th</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>NTTA Toll<span class="row-sub">Confirmed ~11th–17th</span></div></div>
+          <div><div class="row-amt">$40.00</div><div class="row-due">~11th</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Home Team Pest + Salt Light<span class="row-sub">On Chase · ~5th</span></div></div>
+          <div><div class="row-amt">$82.38</div><div class="row-due">~5th</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Crunch Fitness<span class="row-sub">Confirmed 13th · $59 once/yr (annual fee)</span></div></div>
+          <div><div class="row-amt">$28.13</div><div class="row-due">13th</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-warn"></span><div>Vivint Security<span class="row-sub">On Chase · confirm if cancellable</span></div></div>
+          <div><div class="row-amt warn">$34.61</div><div class="row-due">~29th</div></div>
+        </div>
+        <div class="total-row">
+          <span>Total fixed bills</span>
+          <span class="row-amt red">$5,102.24</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ SECTION: DEBT ════════════ -->
+  <div class="section-label">Debt Payoff</div>
+  <div class="grid grid-1">
+
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#e0555515">💳</div>
+          Debt Tracker
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-red">$46,922 remaining</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <!-- Chase -->
+        <div class="row-item">
+          <div class="row-label">
+            <span class="dot dot-red"></span>
+            <div>🔴 Chase Marriott (xxxx-0569)<span class="row-sub">26.74% APR · $659 min · TARGET $1,200/mo · due ~9th</span></div>
+          </div>
+          <div>
+            <div class="row-amt red" id="live-chase-bal" onclick="editBalance('chase')" style="cursor:pointer;text-decoration:underline dotted" title="Click to update">$13,992</div>
+            <div class="row-due">~Jan 2027</div>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-label">
+            <span>Paid down from $20,006 original</span>
+            <span style="color:var(--danger)">30% paid</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill fill-red" style="width:30%"></div></div>
+        </div>
+        <div class="note warn" style="margin-bottom:14px">⚠️ ~$5,625 of balance is at 0% until Nov 12, 2026. Rest accrues at 26.74%. Call Chase to confirm high-rate allocation.</div>
+
+        <!-- SoFi -->
+        <div class="row-item">
+          <div class="row-label">
+            <span class="dot dot-purple"></span>
+            <div>🔵 SoFi Personal Loan<span class="row-sub">7.80% fixed · autopay $1,807.80 · ends Aug 2027</span></div>
+          </div>
+          <div>
+            <div class="row-amt" style="color:var(--accent);cursor:pointer;text-decoration:underline dotted" id="live-sofi-bal" onclick="editBalance('sofi')" title="Click to update">$29,001</div>
+            <div class="row-due">Aug 2027</div>
+          </div>
+        </div>
+        <div class="progress-wrap" style="margin-bottom:14px">
+          <div class="progress-label">
+            <span>Balance Mar 2027: ~$8,859</span>
+            <span style="color:var(--accent)">on track</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill fill-purple" style="width:42%"></div></div>
+        </div>
+
+        <!-- Affirm group -->
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Affirm – Auto Tek #1<span class="row-sub">0% · $118.74/mo · due 9th · ends ~Jan 2027</span></div></div>
+          <div><div class="row-amt muted">$1,187</div><div class="row-due">Jan 2027</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Affirm – Auto Tek #2<span class="row-sub">0% · $125.49/mo · due 9th · ends ~Jan 2027</span></div></div>
+          <div><div class="row-amt muted">$1,253</div><div class="row-due">Jan 2027</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-warn"></span><div>Affirm – Boardsmith<span class="row-sub">0% · $97.83/mo · due 9th · ends ~Aug 2026</span></div></div>
+          <div><div class="row-amt warn">$489</div><div class="row-due">Aug 2026 ⚡</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Synchrony Sport (Sky)<span class="row-sub">0% until year-end · $30 min · Sky paying</span></div></div>
+          <div><div class="row-amt muted">$196</div><div class="row-due">year-end</div></div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Paid off -->
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-green"></span><div class="ms-done">✅ Citi Simplicity — PAID OFF Mar 25</div></div>
+          <div><div class="row-amt green">$0</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-green"></span><div class="ms-done">✅ Chase Prime Visa — PAID OFF</div></div>
+          <div><div class="row-amt green">$0</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-green"></span><div class="ms-done">✅ Discover — CLOSED</div></div>
+          <div><div class="row-amt green">$0</div></div>
+        </div>
+
+        <div class="total-row">
+          <span>Total remaining (Meagan only)</span>
+          <span class="row-amt red">$46,922</span>
+        </div>
+        <div class="note green">🏆 Payoff timeline: Boardsmith Aug 2026 → Chase Jan 2027 → Affirm x2 Jan 2027 → SoFi Aug 2027 → DEBT FREE 🚀</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ SECTION: VARIABLE SPENDING ════════════ -->
+  <div class="section-label">Variable Spending · Actuals vs Targets</div>
+  <div class="grid grid-1">
+
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#f0a04815">🛒</div>
+          Spending Tracker
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-warn" id="spending-period-badge">Mar 2026 actuals</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body" id="live-spending-body">
+        <!-- populated by JS from imported CSV data, falls back to last statement actuals -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ SECTION: PAYCHECK PLANNER ════════════ -->
+  <div class="section-label">Paycheck Planner</div>
+  <div class="grid grid-1">
+
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#7c6af715">📅</div>
+          Bi-Weekly Paycheck Plan
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-purple">$4,233 each</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="pc-tabs">
+          <div class="pc-tab active" onclick="switchPC(event,'pcA')">Paycheck A (3rd)</div>
+          <div class="pc-tab" onclick="switchPC(event,'pcB')">Paycheck B (17th)</div>
+        </div>
+
+        <div id="pcA" class="pc-section active">
+          <div class="note warn" style="margin-bottom:14px">⚠️ HEAVY paycheck — Mortgage + SoFi + HOA all hit within 3 days. BofA savings buffer essential.</div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-red"></span>Mortgage (Rocket)</div><div><div class="row-amt red">$2,590.87</div><div class="row-due">3rd</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-red"></span>SoFi Personal Loan</div><div><div class="row-amt red">$1,807.80</div><div class="row-due">5th–6th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>HOA (Easton Park)</div><div><div class="row-amt">$80.00</div><div class="row-due">6th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Home Team Pest + Salt Light</div><div><div class="row-amt">$82.38</div><div class="row-due">~5th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-red"></span>Chase Marriott (attack)</div><div><div class="row-amt red">$1,200.00</div><div class="row-due">~9th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Affirm × 3</div><div><div class="row-amt">$342.06</div><div class="row-due">9th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Crunch Fitness</div><div><div class="row-amt">$28.13</div><div class="row-due">13th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Bluebonnet Electric</div><div><div class="row-amt">$150.61</div><div class="row-due">~16th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Peacock + Google</div><div><div class="row-amt">$14.01</div><div class="row-due">~16th</div></div></div>
+          <div class="total-row"><span>Total obligations</span><span class="row-amt red">$6,294.86</span></div>
+          <div class="note red">Paycheck is $4,233 — obligations exceed one paycheck. BofA savings buffer covers the gap. Paycheck B surplus pre-funds this.</div>
+        </div>
+
+        <div id="pcB" class="pc-section">
+          <div class="note green" style="margin-bottom:14px">✅ LIGHTER paycheck — use surplus to pre-fund next Paycheck A and build Wealthfront.</div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>CenterPoint Gas</div><div><div class="row-amt">$43.80</div><div class="row-due">~17th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>NTTA Toll</div><div><div class="row-amt">$40.00</div><div class="row-due">~11th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>SiriusXM</div><div><div class="row-amt">$10.65</div><div class="row-due">~18th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>City of Austin</div><div><div class="row-amt">$119.04</div><div class="row-due">~18th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>T-Mobile</div><div><div class="row-amt">$125.00</div><div class="row-due">23rd</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Netflix</div><div><div class="row-amt">$26.98</div><div class="row-due">~24th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Whoop + Uber One</div><div><div class="row-amt">$41.97</div><div class="row-due">~25th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Spotify (Chase)</div><div><div class="row-amt">$21.64</div><div class="row-due">~28th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-warn"></span>Vivint Security</div><div><div class="row-amt warn">$34.61</div><div class="row-due">~29th</div></div></div>
+          <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Apple iCloud</div><div><div class="row-amt">$12.99</div><div class="row-due">~2nd</div></div></div>
+          <div class="total-row"><span>Total obligations</span><span class="row-amt green">$476.68</span></div>
+          <div class="note green">Surplus: ~$3,756 after bills. Use to pre-fund Paycheck A and transfer to Wealthfront HYSA.</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ SECTION: CASH FLOW TIMELINE ════════════ -->
+  <div class="section-label">April–May Cash Flow</div>
+  <div class="grid grid-1">
+
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#4fc38a15">📈</div>
+          Running Balance Tracker
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-green">Starts $5,252</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">Now</div><div class="tl-label">Starting balance (checking + savings)</div><div class="tl-bal" style="color:var(--accent2)">$5,252</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--danger)"></div><div class="tl-date">Apr 5</div><div class="tl-label">SoFi autopay −$1,808</div><div class="tl-bal" style="color:var(--warn)">$3,444</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:#555"></div><div class="tl-date">Apr 6–7</div><div class="tl-label">HOA + Home Team + Salt Light −$162</div><div class="tl-bal">$3,282</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--danger)"></div><div class="tl-date">Apr 9</div><div class="tl-label">Chase Marriott −$1,200 + Affirm x3 −$342</div><div class="tl-bal" style="color:var(--danger)">$1,740</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:#555"></div><div class="tl-date">Apr 13–16</div><div class="tl-label">Crunch + Bluebonnet + Peacock/Google −$193</div><div class="tl-bal" style="color:var(--warn)">$1,547</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">Apr 17</div><div class="tl-label">💵 PAYCHECK +$4,233</div><div class="tl-bal" style="color:var(--accent2)">$5,780</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:#555"></div><div class="tl-date">Apr 17–29</div><div class="tl-label">Utilities + subscriptions + variable −$1,700</div><div class="tl-bal" style="color:var(--accent2)">$4,080</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent)"></div><div class="tl-date">May 1</div><div class="tl-label">💵 PAYCHECK +$4,233 → transfer $2,000 to Wealthfront</div><div class="tl-bal" style="color:var(--accent2)">$6,313</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--danger)"></div><div class="tl-date">May 3–5</div><div class="tl-label">Mortgage −$2,591 + SoFi −$1,808</div><div class="tl-bal" style="color:var(--warn)">$1,914</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--danger)"></div><div class="tl-date">May 9</div><div class="tl-label">Chase −$1,200 + Affirm −$342</div><div class="tl-bal" style="color:var(--danger)">$372</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">May 15</div><div class="tl-label">💵 PAYCHECK +$4,233 — relief 🎉</div><div class="tl-bal" style="color:var(--accent2)">$4,605</div></div>
+        </div>
+        <div class="note warn">⚠️ May 9 is the tightest day at $372. BofA savings buffer is essential. May 15 paycheck immediately restores comfort.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ SECTION: SUBSCRIPTIONS ════════════ -->
+  <div class="section-label">Subscriptions</div>
+  <div class="grid grid-2">
+
+    <div class="card" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#7c6af715">📱</div>
+          Active Subscriptions
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-purple">$409/mo</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Netflix</div><div><div class="row-amt">$26.98</div><div class="row-due">~24th</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Whoop</div><div><div class="row-amt">$31.98</div><div class="row-due">~25th</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Apple iCloud</div><div><div class="row-amt">$12.99</div><div class="row-due">~2nd</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>SiriusXM</div><div><div class="row-amt">$10.65</div><div class="row-due">~18th</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Uber One</div><div><div class="row-amt">$9.99</div><div class="row-due">~25th</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Peacock</div><div><div class="row-amt">$11.90</div><div class="row-due">~16th</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Spotify (Chase)</div><div><div class="row-amt">$21.64</div><div class="row-due">~28th</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Google One</div><div><div class="row-amt">$2.11</div><div class="row-due">~16th</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-warn"></span>Austin Women's Boxing (Chase)</div><div><div class="row-amt warn">$99.00</div><div class="row-due">~25th</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-warn"></span>Austin Theatre Alliance (Chase)</div><div><div class="row-amt warn">$105.56</div><div class="row-due">~1st</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-warn"></span>Bespoke Post box (Chase)</div><div><div class="row-amt warn">$58.40</div><div class="row-due">~6th</div></div></div>
+        <div class="total-row"><span>Total / month</span><span class="row-amt" style="color:var(--accent)">$390.20</span></div>
+      </div>
+    </div>
+
+    <div class="card" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#e0555515">✂️</div>
+          Cancel / Review
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-red">Save ~$583/yr</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-red"></span><div>LinkedIn Premium<span class="row-sub">Renews February 2027</span></div></div>
+          <div><div class="row-amt red">$259/yr</div><div class="row-due">⚠️ CANCEL</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-red"></span><div>Radiant Plumbing<span class="row-sub">$24.99/mo — action item</span></div></div>
+          <div><div class="row-amt red">$300/yr</div><div class="row-due">⚠️ CANCEL</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-warn"></span><div>Google Rocket $11.68<span class="row-sub">What is this? Still needed?</span></div></div>
+          <div><div class="row-amt warn">$140/yr</div><div class="row-due">? Confirm</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-warn"></span><div>Shortwave East $18.89<span class="row-sub">Instagram-related?</span></div></div>
+          <div><div class="row-amt warn">$227/yr</div><div class="row-due">? Confirm</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-warn"></span><div>Vivint Security $34.61<span class="row-sub">Contract or month-to-month?</span></div></div>
+          <div><div class="row-amt warn">$415/yr</div><div class="row-due">? Review</div></div>
+        </div>
+        <div class="note red">Canceling just LinkedIn + Radiant = $559/yr freed. All five = potential $1,341/yr savings.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ SECTION: INVESTMENTS ════════════ -->
+  <div class="section-label">Investments</div>
+  <div class="grid grid-2">
+
+    <div class="card" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#7c6af715">📈</div>
+          Fidelity Accounts
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-purple">$250,241</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-warn"></span><div>Rollover IRA (269201285)<span class="row-sub">⚠️ Needs reallocation — 15 positions</span></div></div>
+          <div><div class="row-amt warn">$220,071</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-green"></span><div>Roth IRA (258986035)<span class="row-sub">FSKAX / FZILX / QQQ / FNILX</span></div></div>
+          <div><div class="row-amt green">$12,555</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-green"></span><div>Cintra 401k (16947)<span class="row-sub">FXAIX 60% / FSKAX 25% / FZILX 15%</span></div></div>
+          <div><div class="row-amt green">$11,985</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-green"></span><div>Inherited IRA BDA (258992506)<span class="row-sub">FXAIX 100% — RMD required</span></div></div>
+          <div><div class="row-amt green">$5,630</div></div>
+        </div>
+        <div class="total-row"><span>Total retirement</span><span class="row-amt" style="color:var(--accent)">$250,241</span></div>
+        <div class="note warn">⚠️ Rollover IRA: sell all 12 bond/active funds → FXAIX 45% / FSKAX 15% / FZILX 35% / QQQ 5%. Exchange instructions ready.</div>
+      </div>
+    </div>
+
+    <div class="card" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#4fc38a15">🏦</div>
+          Savings &amp; Cash
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-green">3.30% APY</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-green"></span><div>BofA Checking (9641)<span class="row-sub">Operating account</span></div></div>
+          <div><div class="row-amt green" id="live-checking" onclick="editBalance('checking')" style="cursor:pointer;text-decoration:underline dotted" title="Click to update">$4,534</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-warn"></span><div>BofA Savings (2606)<span class="row-sub">Mortgage buffer — ~0.01% APY</span></div></div>
+          <div><div class="row-amt warn" id="live-savings" onclick="editBalance('savings')" style="cursor:pointer;text-decoration:underline dotted" title="Click to update">$718</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-purple"></span><div>Wealthfront HYSA<span class="row-sub">3.30% APY — emergency fund seed</span></div></div>
+          <div><div class="row-amt" style="color:var(--accent)">~$1,118</div></div>
+        </div>
+        <div class="total-row"><span>Total liquid</span><span class="row-amt green">~$6,370</span></div>
+        <div class="note">Goal: move ~$2,000 from BofA savings → Wealthfront after May 1 paycheck. Keep $2,000 in BofA as operating buffer.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ SECTION: ACTION ITEMS ════════════ -->
+  <div class="section-label">Action Items</div>
+  <div class="grid grid-1">
+
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#e0555515">✅</div>
+          To-Do List
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-red" id="todo-count">11 pending</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:10px">🚨 Urgent</div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Let SoFi clear Apr 5 before any transfers</div><span class="action-tag tag-urgent">Apr 5</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Pay Synchrony Sport $30 minimum</div><span class="action-tag tag-urgent">Apr 12</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Set Chase Marriott autopay for minimum</div><span class="action-tag tag-urgent">ASAP</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Call Chase — confirm $5,500 applied to high-rate balance, not 0% promo portion</div><span class="action-tag tag-urgent">ASAP</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Cancel Radiant Plumbing $24.99/mo</div><span class="action-tag tag-urgent">ASAP</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Confirm car insurance now paying from correct account (removed from Discover)</div><span class="action-tag tag-urgent">ASAP</span></div>
+
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin:14px 0 10px">💰 Banking</div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">After Apr 17 paycheck — transfer ~$2,000 to Wealthfront HYSA</div><span class="action-tag tag-soon">Apr 18</span></div>
+
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin:14px 0 10px">📈 Investments</div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Execute Rollover IRA reallocation — exchange instructions ready (sell 12 positions, buy FXAIX/FSKAX/FZILX/QQQ)</div><span class="action-tag tag-soon">Soon</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Find fee-only fiduciary advisor at NAPFA.org Austin — Roth IRA eligibility + Rollover IRA review</div><span class="action-tag tag-soon">This month</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Confirm 2026 Inherited IRA RMD exact amount with CPA</div><span class="action-tag tag-soon">Before year-end</span></div>
+
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin:14px 0 10px">✂️ Subscriptions</div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Cancel LinkedIn Premium before February 2027 renewal (~$259/yr)</div><span class="action-tag tag-ongoing">Feb 2027</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Review Austin Theatre Alliance $105.56/mo — pause during debt payoff?</div><span class="action-tag tag-ongoing">This month</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Review Bespoke Post box $58.40/mo — pause during debt payoff?</div><span class="action-tag tag-ongoing">This month</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Confirm Vivint Security $34.61 — month-to-month or contract? Cancel if possible.</div><span class="action-tag tag-ongoing">This month</span></div>
+
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin:14px 0 10px">🏥 FSA</div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Get superbill from Jessie White — submit to FSA for reimbursement each session ($135/visit)</div><span class="action-tag tag-ongoing">Monthly</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Get superbill from OutWellness — confirm FSA eligibility ($150 charge)</div><span class="action-tag tag-ongoing">ASAP</span></div>
+
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin:14px 0 10px">📅 Ongoing</div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Every dollar from Sky's unemployment → Chase Marriott (100%, not bills)</div><span class="action-tag tag-ongoing">Each payment</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">When Boardsmith ends Aug 2026 — redirect $97.83/mo to Chase automatically</div><span class="action-tag tag-ongoing">Aug 2026</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">When Affirm x2 end Jan 2027 — redirect $244.23/mo to SoFi automatically</div><span class="action-tag tag-ongoing">Jan 2027</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Pay Synchrony Sport in full before 0% expires year-end 2026</div><span class="action-tag tag-ongoing">Dec 2026</span></div>
+        <div class="action-item" onclick="toggleAction(event,this)"><div class="action-check"></div><div class="action-text">Tighten dining — target $300/mo vs $1,047 actual. Biggest single lever available.</div><span class="action-tag tag-ongoing">Ongoing</span></div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ SECTION: MORTGAGE ════════════ -->
+  <div class="section-label">🏡 Mortgage Tracker &amp; Payoff Scenarios</div>
+  <div class="grid grid-1">
+
+    <!-- MORTGAGE SNAPSHOT -->
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#4fc38a15">🏠</div>
+          Mortgage Snapshot
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-green">4.25% fixed</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Current Balance</div>
+            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--warn)">$321,561</div>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:3px">as of Jun 2022 + payments</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Monthly Payment</div>
+            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--text)">$2,590.87</div>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:3px">P&amp;I $1,696.93 + escrow</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Interest if no extra</div>
+            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--danger)">$212,972</div>
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:3px">paid over 26 years to 2052</div>
+          </div>
+        </div>
+
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Original loan<span class="row-sub">Originated June 14, 2022</span></div></div>
+          <div><div class="row-amt">$344,729</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-green"></span><div>Home equity<span class="row-sub">~$90k equity · ~22%</span></div></div>
+          <div><div class="row-amt green">~$90,000</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Maturity date<span class="row-sub">At current payment pace</span></div></div>
+          <div><div class="row-amt muted">July 2052</div></div>
+        </div>
+        <div class="row-item">
+          <div class="row-label"><span class="dot dot-muted"></span><div>Interest rate<span class="row-sub">Fixed for life of loan</span></div></div>
+          <div><div class="row-amt">4.25%</div></div>
+        </div>
+
+        <!-- Payoff progress bar -->
+        <div style="margin-top:16px">
+          <div class="progress-label">
+            <span>Loan paid down ($23,168 principal so far)</span>
+            <span style="color:var(--accent2)">6.7% paid</span>
+          </div>
+          <div class="progress-track" style="height:10px">
+            <div class="progress-fill fill-green" style="width:6.7%"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px">
+            <span>$0</span><span>$344,729</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXTRA PAYMENT SCENARIOS -->
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#7c6af715">📊</div>
+          Extra Payment Scenarios
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-purple">How much can you save?</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <!-- Scenario tabs -->
+        <div class="pc-tabs" style="margin-bottom:16px">
+          <div class="pc-tab active" onclick="switchPC(event,'scByExtra')">By Extra Amount</div>
+          <div class="pc-tab" onclick="switchPC(event,'scByTarget')">By Target Year</div>
+        </div>
+
+        <div id="scByExtra" class="pc-section active">
+          <div class="note" style="margin-bottom:14px">Based on P&amp;I only ($1,696.93/mo). Interest saved vs. doing nothing.</div>
+
+          <!-- Scenario rows -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:0 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px">
+            <span>Extra/mo</span><span style="text-align:right">Payoff year</span><span style="text-align:right">Interest saved</span><span style="text-align:right">Years saved</span>
+          </div>
+
+          <div class="sc-row" data-extra="0" data-year="2052" data-saved="0" data-yrs="0">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+              <span style="font-family:var(--mono);color:var(--muted)">$0 (base)</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--muted)">2052</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--muted)">—</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--muted)">—</span>
+            </div>
+            <div class="progress-track" style="margin:4px 0 8px"><div class="progress-fill fill-purple" style="width:0%"></div></div>
+          </div>
+
+          <div class="sc-row">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+              <span style="font-family:var(--mono);color:var(--accent2)">+$250/mo</span>
+              <span style="font-family:var(--mono);text-align:right">2046</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--accent2)">$49,747</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--accent2)">6 yrs</span>
+            </div>
+            <div class="progress-track" style="margin:4px 0 8px"><div class="progress-fill fill-green" style="width:23.4%"></div></div>
+          </div>
+
+          <div class="sc-row">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+              <span style="font-family:var(--mono);color:var(--accent2)">+$500/mo</span>
+              <span style="font-family:var(--mono);text-align:right">2043</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--accent2)">$79,768</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--accent2)">9 yrs</span>
+            </div>
+            <div class="progress-track" style="margin:4px 0 8px"><div class="progress-fill fill-green" style="width:37.5%"></div></div>
+          </div>
+
+          <div class="sc-row">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+              <span style="font-family:var(--mono);color:var(--warn)">+$1,000/mo</span>
+              <span style="font-family:var(--mono);text-align:right">2039</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--warn)">$113,812</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--warn)">13 yrs</span>
+            </div>
+            <div class="progress-track" style="margin:4px 0 8px"><div class="progress-fill fill-warn" style="width:53.4%"></div></div>
+          </div>
+
+          <div class="sc-row">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+              <span style="font-family:var(--mono);color:var(--warn)">+$1,500/mo</span>
+              <span style="font-family:var(--mono);text-align:right">2036</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--warn)">$134,917</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--warn)">16 yrs</span>
+            </div>
+            <div class="progress-track" style="margin:4px 0 8px"><div class="progress-fill fill-warn" style="width:63.3%"></div></div>
+          </div>
+
+          <div class="sc-row">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;font-size:12px;align-items:center">
+              <span style="font-family:var(--mono);color:var(--danger)">+$2,000/mo</span>
+              <span style="font-family:var(--mono);text-align:right">2034</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--danger)">$146,355</span>
+              <span style="font-family:var(--mono);text-align:right;color:var(--danger)">18 yrs</span>
+            </div>
+            <div class="progress-track" style="margin:4px 0 8px"><div class="progress-fill fill-red" style="width:68.7%"></div></div>
+          </div>
+        </div>
+
+        <div id="scByTarget" class="pc-section">
+          <div class="note" style="margin-bottom:14px">How much extra do you need to pay each month to hit a specific payoff year?</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:0 0 6px;border-bottom:1px solid var(--border);margin-bottom:8px">
+            <span>Target</span><span style="text-align:right">Extra/mo needed</span><span style="text-align:right">Total P&amp;I</span><span style="text-align:right">Interest saved</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+            <span style="font-family:var(--mono)">10 yrs (2036)</span>
+            <span style="font-family:var(--mono);text-align:right;color:var(--danger);font-weight:600">+$1,597/mo</span>
+            <span style="font-family:var(--mono);text-align:right">$3,294/mo</span>
+            <span style="font-family:var(--mono);text-align:right;color:var(--accent2)">$135,960</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+            <span style="font-family:var(--mono)">15 yrs (2041)</span>
+            <span style="font-family:var(--mono);text-align:right;color:var(--warn);font-weight:600">+$722/mo</span>
+            <span style="font-family:var(--mono);text-align:right">$2,419/mo</span>
+            <span style="font-family:var(--mono);text-align:right;color:var(--accent2)">$99,106</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:center">
+            <span style="font-family:var(--mono)">20 yrs (2046)</span>
+            <span style="font-family:var(--mono);text-align:right;color:var(--accent2);font-weight:600">+$294/mo</span>
+            <span style="font-family:var(--mono);text-align:right">$1,991/mo</span>
+            <span style="font-family:var(--mono);text-align:right;color:var(--accent2)">$56,640</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;padding:8px 0;font-size:12px;align-items:center">
+            <span style="font-family:var(--mono)">25 yrs (2051)</span>
+            <span style="font-family:var(--mono);text-align:right;color:var(--accent2);font-weight:600">+$45/mo</span>
+            <span style="font-family:var(--mono);text-align:right">$1,742/mo</span>
+            <span style="font-family:var(--mono);text-align:right;color:var(--accent2)">$10,185</span>
+          </div>
+
+          <div class="note green" style="margin-top:14px">💡 Sweet spot: +$500/mo saves $79,768 and pays off 9 years early (2043). Achievable once SoFi is done Aug 2027 — redirect that $1,808/mo and you're way ahead.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVEST VS PAYOFF -->
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#e0555515">⚖️</div>
+          Invest vs. Pay Off Mortgage
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-warn">The big question</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div class="note" style="margin-bottom:16px">Modeled from late 2027 — after all consumer debt is gone. Assumes $3,500/mo freed up (SoFi $1,808 + Chase $1,200 + Affirm $342 + extra). Mortgage balance ~$305,000.</div>
+
+        <!-- The comparison cards -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+
+          <div style="background:var(--surface);border:1px solid #e0555533;border-radius:12px;padding:16px">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--danger);text-transform:uppercase;margin-bottom:10px">Option A — Pay Off Mortgage</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">Put $3,500/mo extra toward mortgage principal</div>
+            <div style="border-top:1px solid var(--border);padding-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Mortgage payoff</span><span style="font-family:var(--mono);color:var(--accent2)">~2033</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Interest saved</span><span style="font-family:var(--mono);color:var(--accent2)">~$101,000</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Net worth gain (10yr)</span><span style="font-family:var(--mono);color:var(--warn)">~$101,000</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Guaranteed return</span><span style="font-family:var(--mono);color:var(--accent2)">4.25%</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Risk</span><span style="font-family:var(--mono);color:var(--accent2)">Zero</span></div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;font-family:var(--mono);color:var(--muted);line-height:1.5">✅ Peace of mind<br>✅ No mortgage = ~$2,591/mo freed<br>✅ Housing security regardless of market<br>❌ Lower wealth accumulation mathematically</div>
+          </div>
+
+          <div style="background:var(--surface);border:1px solid #4fc38a33;border-radius:12px;padding:16px">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--accent2);text-transform:uppercase;margin-bottom:10px">Option B — Invest Instead</div>
+            <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">Invest $3,500/mo in index funds (7% avg real return)</div>
+            <div style="border-top:1px solid var(--border);padding-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Portfolio at 10 years</span><span style="font-family:var(--mono);color:var(--accent2)">~$606,000</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Portfolio at 20 years</span><span style="font-family:var(--mono);color:var(--accent2)">~$1,823,000</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Net worth gain (10yr)</span><span style="font-family:var(--mono);color:var(--accent2)">~$606,000</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Avg annual return</span><span style="font-family:var(--mono);color:var(--warn)">7% (not guaranteed)</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:var(--muted)">Risk</span><span style="font-family:var(--mono);color:var(--warn)">Market volatility</span></div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;font-family:var(--mono);color:var(--muted);line-height:1.5">✅ Mathematically wins at 4.25% rate<br>✅ $1.8M portfolio in 20 years<br>✅ Compounding accelerates over time<br>❌ Market risk · still have mortgage payment</div>
+          </div>
+        </div>
+
+        <!-- The verdict -->
+        <div style="background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:16px;margin-bottom:14px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--accent);text-transform:uppercase;margin-bottom:10px">🎯 The Smart Hybrid Approach</div>
+          <div style="font-size:13px;line-height:1.7;color:var(--text)">
+            At <strong>4.25%</strong> your mortgage rate is below the long-term market average — mathematically, investing beats paying it down. But the <em>best</em> answer for most people is a <strong>hybrid</strong>:
+          </div>
+          <div style="margin-top:12px;display:grid;gap:8px">
+            <div style="display:flex;gap:10px;align-items:flex-start;font-size:12px">
+              <span style="color:var(--accent2);font-weight:700;flex-shrink:0">Step 1</span>
+              <span style="color:var(--muted)">Max Roth IRA ($7,000/yr) + 401k to match — tax-advantaged investing first</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;font-size:12px">
+              <span style="color:var(--accent2);font-weight:700;flex-shrink:0">Step 2</span>
+              <span style="color:var(--muted)">Build HYSA emergency fund to 3–6 months (~$15,000–$25,000)</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;font-size:12px">
+              <span style="color:var(--accent2);font-weight:700;flex-shrink:0">Step 3</span>
+              <span style="color:var(--muted)">Split remaining cash flow: ~70% invest (brokerage/IRA) + ~30% extra mortgage</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;font-size:12px">
+              <span style="color:var(--accent2);font-weight:700;flex-shrink:0">Step 4</span>
+              <span style="color:var(--muted)">As mortgage balance drops below $200k, consider accelerating payoff for the finish line</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Post-debt cash flow projection -->
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Post-Debt Cash Flow (est. late 2027)</div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-green"></span><div>Freed from SoFi payoff<span class="row-sub">Aug 2027</span></div></div><div><div class="row-amt green">+$1,808/mo</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-green"></span><div>Freed from Chase Marriott<span class="row-sub">~Jan 2027</span></div></div><div><div class="row-amt green">+$1,200/mo</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-green"></span><div>Freed from Affirm × 3<span class="row-sub">~Jan 2027</span></div></div><div><div class="row-amt green">+$342/mo</div></div></div>
+        <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span><div>Still owe: mortgage only<span class="row-sub">Balance ~$297k by Jan 2028</span></div></div><div><div class="row-amt muted">−$2,591/mo</div></div></div>
+        <div class="total-row">
+          <span>Net new cash flow to deploy</span>
+          <span class="row-amt green">~$3,350/mo</span>
+        </div>
+        <div class="note green">🚀 By late 2027 you'll have ~$3,350/mo to split between investing and mortgage acceleration. At $1.8M in 20 years with Option B — that's financial independence territory.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- footer -->
+  <div style="text-align:center;margin-top:48px;font-family:var(--mono);font-size:11px;color:var(--muted)">
+    Pratt Finance Hub · Built with data from confirmed BofA + Chase statements · Apr 2026
+  </div>
+
+</div>
+
+<script>
+  function toggleCard(card) {
+    // Only toggle if click was on header
+    card.classList.toggle('open');
+  }
+
+  // Prevent card toggle when clicking interactive elements inside
+  document.querySelectorAll('.action-item, .pc-tab, .pc-tabs').forEach(el => {
+    el.addEventListener('click', e => e.stopPropagation());
+  });
+
+  function toggleAction(e, item) {
+    e.stopPropagation();
+    item.classList.toggle('done');
+    const check = item.querySelector('.action-check');
+    check.textContent = item.classList.contains('done') ? '✓' : '';
+    updateTodoCount();
+  }
+
+  function updateTodoCount() {
+    const all = document.querySelectorAll('.action-item').length;
+    const done = document.querySelectorAll('.action-item.done').length;
+    const pending = all - done;
+    const badge = document.getElementById('todo-count');
+    badge.textContent = pending === 0 ? '✅ all done!' : `${pending} pending`;
+    badge.className = 'card-badge ' + (pending === 0 ? 'badge-green' : 'badge-red');
+  }
+
+  function switchPC(e, id) {
+    e.stopPropagation();
+    document.querySelectorAll('.pc-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.pc-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    e.target.classList.add('active');
+  }
+
+  // Animate progress bars on load
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.querySelectorAll('.progress-fill, .budget-actual').forEach(el => {
+        const w = el.style.width;
+        el.style.width = '0%';
+        setTimeout(() => { el.style.width = w; }, 100);
+      });
+    }, 200);
+  });
+</script>
+
+<!-- ── IMPORT MODAL ── -->
+<div id="import-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:1000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:540px;max-height:85vh;overflow:auto" onclick="event.stopPropagation()">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-weight:600;font-size:15px">Import Statement CSV</span>
+      <button onclick="closeImport()" style="background:transparent;border:1px solid #2a2a30;color:#888896;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:13px">✕</button>
+    </div>
+    <div style="padding:20px 24px">
+      <p style="font-size:13px;color:#888896;margin-bottom:16px;line-height:1.6">Upload a CSV from BofA or Chase. Auto-detects format, categorizes transactions, and updates your spending tracker.</p>
+      <div id="drop-zone" onclick="document.getElementById('csv-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='#2a2a30'" ondrop="handleDrop(event)" style="border:2px dashed #2a2a30;border-radius:12px;padding:36px 24px;text-align:center;cursor:pointer;transition:border-color .2s">
+        <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleFile(event)">
+        <div style="font-size:28px;margin-bottom:8px">📄</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px;color:#e8e8ec">Drop CSV here or click to browse</div>
+        <div style="font-size:12px;color:#888896">Bank of America · Chase · Generic</div>
+      </div>
+      <div id="import-log" style="display:none;background:#131316;border:1px solid #2a2a30;border-radius:8px;padding:12px;font-family:var(--mono);font-size:11px;color:#888896;max-height:140px;overflow-y:auto;margin-top:12px;line-height:1.8;white-space:pre"></div>
+    </div>
+    <div style="padding:14px 24px;border-top:1px solid #2a2a30;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-family:var(--mono);font-size:11px;color:#888896" id="import-txn-count"></span>
+      <button onclick="closeImport()" style="background:transparent;border:1px solid #2a2a30;color:#e8e8ec;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-family:var(--sans)">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── BALANCE EDIT MODAL ── -->
+<div id="bal-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:14px;width:320px;padding:24px" onclick="event.stopPropagation()">
+    <div style="font-weight:600;font-size:14px;margin-bottom:16px" id="bal-modal-title">Update Balance</div>
+    <input type="number" id="bal-input" step="0.01" style="width:100%;background:#131316;color:#e8e8ec;border:1px solid #2a2a30;border-radius:8px;padding:10px 14px;font-size:15px;font-family:var(--mono);margin-bottom:16px">
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="document.getElementById('bal-modal').style.display='none'" style="background:transparent;border:1px solid #2a2a30;color:#888896;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">Cancel</button>
+      <button onclick="saveBalance()" style="background:#7c6af7;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:500">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DRILL DOWN MODAL ── -->
+<div id="drill-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:1000;align-items:center;justify-content:center;padding:20px" onclick="closeDrill(event)">
+  <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:680px;max-height:85vh;overflow:auto" onclick="event.stopPropagation()">
+    <div style="padding:18px 24px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#1e1e22;z-index:10">
+      <span style="font-weight:600;font-size:15px" id="drill-title">Category</span>
+      <button onclick="document.getElementById('drill-modal').style.display='none'" style="background:transparent;border:1px solid #2a2a30;color:#888896;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:13px">✕</button>
+    </div>
+    <div id="drill-body" style="padding:0 24px 24px"></div>
+  </div>
+</div>
+
+<!-- ── TXN EDIT MODAL ── -->
+<div id="txn-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:1100;align-items:center;justify-content:center;padding:20px" onclick="closeTxnModal(event)">
+  <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:500px" onclick="event.stopPropagation()">
+    <div style="padding:18px 24px 14px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-weight:600;font-size:15px">Edit Transaction</span>
+      <button onclick="closeTxnModal()" style="background:transparent;border:1px solid #2a2a30;color:#888896;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:13px">✕</button>
+    </div>
+    <div style="padding:20px 24px">
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:#888896;font-family:var(--mono);display:block;margin-bottom:5px">DATE</label><input type="text" id="edit-date" readonly style="width:100%;background:#131316;color:#888896;border:1px solid #2a2a30;border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:13px"></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:#888896;font-family:var(--mono);display:block;margin-bottom:5px">DESCRIPTION</label><input type="text" id="edit-desc" style="width:100%;background:#131316;color:#e8e8ec;border:1px solid #2a2a30;border-radius:8px;padding:8px 12px;font-size:13px"></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:#888896;font-family:var(--mono);display:block;margin-bottom:5px">AMOUNT</label><input type="number" id="edit-amount" step="0.01" style="width:100%;background:#131316;color:#e8e8ec;border:1px solid #2a2a30;border-radius:8px;padding:8px 12px;font-family:var(--mono);font-size:13px"></div>
+      <div style="margin-bottom:12px"><label style="font-size:11px;color:#888896;font-family:var(--mono);display:block;margin-bottom:5px">CATEGORY</label><select id="edit-cat" style="width:100%;background:#131316;color:#e8e8ec;border:1px solid #2a2a30;border-radius:8px;padding:8px 12px;font-size:13px"></select></div>
+      <div><label style="font-size:11px;color:#888896;font-family:var(--mono);display:block;margin-bottom:5px">NOTES</label><input type="text" id="edit-notes" placeholder="Optional" style="width:100%;background:#131316;color:#e8e8ec;border:1px solid #2a2a30;border-radius:8px;padding:8px 12px;font-size:13px"></div>
+    </div>
+    <div style="padding:14px 24px;border-top:1px solid #2a2a30;display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="deleteTxn()" style="background:#e0555510;color:#e05555;border:1px solid #e0555540;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">Delete</button>
+      <button onclick="closeTxnModal()" style="background:transparent;border:1px solid #2a2a30;color:#888896;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">Cancel</button>
+      <button onclick="saveTxn()" style="background:#7c6af7;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:500">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA LAYER ─────────────────────────────────────────────────────────────
+const CATEGORIES = ['Income','Mortgage','Fixed Bills','Debt Payments','Groceries','Dining Out','Pets','Pharmacy/Health','Gas','Shopping','Subscriptions','Utilities','Entertainment','Travel','Services','Transfers','Savings','FSA / Therapy','Other'];
+
+const TARGETS = {
+  'Groceries':400,'Dining Out':300,'Pets':350,'Pharmacy/Health':150,
+  'Gas':100,'Shopping':150,'Entertainment':75,'Services':270,
+  'Subscriptions':390,'Travel':0,'Other':100,'FSA / Therapy':270
+};
+
+const CAT_EMOJIS = {
+  'Dining Out':'🍽️','Groceries':'🛒','Pets':'🐾','Pharmacy/Health':'💊',
+  'Gas':'⛽','Shopping':'🛍️','Entertainment':'🎭','Services':'🧰',
+  'Subscriptions':'📱','Travel':'✈️','Income':'💵','Mortgage':'🏠',
+  'Fixed Bills':'🏠','Debt Payments':'💳','Savings':'🏦',
+  'Transfers':'💸','Utilities':'💡','FSA / Therapy':'🧠','Other':'📦'
+};
+
+const RULES = [
+  {r:/payroll|ferrovial|sbtpg|direct.?dep/i, c:'Income'},
+  {r:/rocket.?mortgage|mr.?cooper/i, c:'Mortgage'},
+  {r:/sofi/i, c:'Fixed Bills'},
+  {r:/easton.?park|hoa/i, c:'Fixed Bills'},
+  {r:/t.?mobile|at&t/i, c:'Fixed Bills'},
+  {r:/bluebonnet|centerpoint|cpenergy|city.?of.?austin/i, c:'Utilities'},
+  {r:/crunch|boxing|fitness|gym|whoop|austin.?women/i, c:'Subscriptions'},
+  {r:/chase.?credit|credit.?crd|citi.*card|discover.*pay|synchrony|affirm/i, c:'Debt Payments'},
+  {r:/netflix|peacock|spotify|siriusxm|apple.*bill|uber.*one|google.*one|shortwave|bespoke|linkedin|anthropic/i, c:'Subscriptions'},
+  {r:/doordash|grubhub|ubereats/i, c:'Dining Out'},
+  {r:/cenizo|sano.?market|radio.?east|chipotle|starbucks|gati|veracruz|bouldin|mammoth.?brew|buddha|crumpet|salt.?straw|highley/i, c:'Dining Out'},
+  {r:/heb|costco(?!.*gas)|trader.?joe|wheatsville|big.?brazos|home.?chef/i, c:'Groceries'},
+  {r:/chewy|viva.?raw|open.?farm|austin.?urban.?vet|petco/i, c:'Pets'},
+  {r:/peoples.?pharm|cvs|walgreens|pharmacy|drug|rx/i, c:'Pharmacy/Health'},
+  {r:/7.?eleven|shell|costco.*gas|circle.?k/i, c:'Gas'},
+  {r:/ntta|toll(?!.*auth)|parking/i, c:'Gas'},
+  {r:/amazon|target|walmart|homegoods|hobby.?lobby|uncommon|br.?factory/i, c:'Shopping'},
+  {r:/delta|united|expedia|airbnb|hotel|mammoth.?mtn|snowmobile/i, c:'Travel'},
+  {r:/wealthfront/i, c:'Savings'},
+  {r:/simplTX|jessie.?white|outwell/i, c:'FSA / Therapy'},
+  {r:/seat.?engine|theatre|alamo|trail.?of.?light|tks.?arb|paramount/i, c:'Entertainment'},
+  {r:/vivint|home.?team.?pest|radiant.?plumb|austin.?bin.?wash|westbank/i, c:'Fixed Bills'},
+  {r:/zelle|venmo|paypal/i, c:'Transfers'},
+  {r:/strong.?paws/i, c:'Other'},
+];
+
+function categorize(desc) {
+  for (const {r,c} of RULES) if (r.test(desc||'')) return c;
+  return 'Other';
+}
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let APP = {
+  transactions: [],
+  balances: { checking: 4533.50, savings: 718.47, chase: 13992.03, sofi: 29000.79 },
+  editingTxnIdx: null,
+  editingBalKey: null,
+  targets: {...TARGETS}
+};
+
+function saveState() {
+  try { localStorage.setItem('pratt_hub_v3', JSON.stringify(APP)); } catch(e) {}
+}
+function loadState() {
+  try {
+    const d = localStorage.getItem('pratt_hub_v3');
+    if (d) { const p = JSON.parse(d); Object.assign(APP, p); }
+  } catch(e) {}
+}
+
+// ── FORMAT ─────────────────────────────────────────────────────────────────
+function f$(n) {
+  const abs = Math.abs(n);
+  const str = abs.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+  return n < 0 ? `(${str})` : str;
+}
+function f$c(n) { return Math.abs(n).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2}); }
+
+// ── CSV PARSING ────────────────────────────────────────────────────────────
+function detectFmt(headers) {
+  const h = headers.map(x=>(x||'').toLowerCase().trim());
+  if (h.some(x=>x.includes('running'))) return 'bofa';
+  if (h.includes('transaction date') || h.includes('post date')) return 'chase';
+  return 'generic';
+}
+
+function parseRows(rows, fmt) {
+  const txns = [];
+  for (const r of rows) {
+    let date='', desc='', amt=0;
+    if (fmt==='bofa') {
+      date = r['Date']||''; desc = r['Description']||'';
+      amt = parseFloat((r['Amount']||'0').replace(/[$,]/g,''));
+    } else if (fmt==='chase') {
+      date = r['Transaction Date']||r['Post Date']||'';
+      desc = r['Description']||''; 
+      amt = parseFloat((r['Amount']||'0').replace(/[$,]/g,''));
+    } else {
+      const keys = Object.keys(r);
+      const dk = keys.find(k=>/date/i.test(k))||keys[0];
+      const ek = keys.find(k=>/desc|memo|name/i.test(k))||keys[1];
+      const ak = keys.find(k=>/amount|amt/i.test(k))||keys[2];
+      date=r[dk]||''; desc=r[ek]||''; amt=parseFloat((r[ak]||'0').replace(/[$,()]/g,''));
+    }
+    if (!date||!desc||isNaN(amt)) continue;
+    txns.push({id:Math.random().toString(36).slice(2), date:date.trim(), desc:desc.trim(), amount:amt, category:categorize(desc), notes:''});
+  }
+  return txns;
+}
+
+function processCSV(text, fname) {
+  const log = document.getElementById('import-log');
+  log.style.display = 'block';
+  log.textContent = `Parsing ${fname}...
+`;
+  
+  const result = Papa.parse(text, {header:true, skipEmptyLines:true, trimHeaders:true});
+  const rows = result.data;
+  if (!rows.length) { log.textContent += '❌ No rows found
+'; return; }
+  
+  const fmt = detectFmt(Object.keys(rows[0]));
+  log.textContent += `Format: ${fmt.toUpperCase()}
+`;
+  
+  const parsed = parseRows(rows, fmt);
+  const existing = new Set(APP.transactions.map(t=>`${t.date}|${t.amount}|${t.desc.slice(0,20)}`));
+  const fresh = parsed.filter(t=>!existing.has(`${t.date}|${t.amount}|${t.desc.slice(0,20)}`));
+  
+  APP.transactions.push(...fresh);
+  saveState();
+  
+  const cats = {};
+  fresh.forEach(t=>{ cats[t.category]=(cats[t.category]||0)+1; });
+  log.textContent += `✅ Imported ${fresh.length} new (${parsed.length-fresh.length} dupes skipped)
+`;
+  Object.entries(cats).sort((a,b)=>b[1]-a[1]).forEach(([c,n])=>{ log.textContent += `  ${c}: ${n}
+`; });
+  
+  document.getElementById('import-txn-count').textContent = `${APP.transactions.length} total transactions`;
+  document.getElementById('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+  renderSpending();
+}
+
+// ── IMPORT HANDLERS ────────────────────────────────────────────────────────
+function openImport() { document.getElementById('import-modal').style.display='flex'; }
+function closeImport() { document.getElementById('import-modal').style.display='none'; }
+function handleFile(e) {
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = ev => processCSV(ev.target.result, f.name); r.readAsText(f);
+}
+function handleDrop(e) {
+  e.preventDefault(); document.getElementById('drop-zone').style.borderColor='#2a2a30';
+  const f = e.dataTransfer.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = ev => processCSV(ev.target.result, f.name); r.readAsText(f);
+}
+
+// ── SPENDING RENDERER ──────────────────────────────────────────────────────
+function getCatTotals() {
+  const skip = new Set(['Income','Mortgage','Fixed Bills','Debt Payments','Savings','Transfers']);
+  const totals = {};
+  APP.transactions.forEach(t => {
+    if (skip.has(t.category) || t.amount >= 0) return;
+    totals[t.category] = (totals[t.category]||0) + Math.abs(t.amount);
+  });
+  return totals;
+}
+
+function renderSpending() {
+  const body = document.getElementById('live-spending-body');
+  const totals = getCatTotals();
+  const hasTxns = Object.keys(totals).length > 0;
+  const badge = document.getElementById('spending-period-badge');
+  
+  if (!hasTxns) {
+    // Fall back to hardcoded Mar 2026 actuals
+    const fallback = [
+      {cat:'🍽️ Dining Out', actual:1046.73, target:300},
+      {cat:'🐾 Pets', actual:513.78, target:350},
+      {cat:'💊 Pharmacy/Supplements', actual:347.35, target:150},
+      {cat:'🛍️ Shopping', actual:486.95, target:150},
+      {cat:'🛒 Groceries', actual:198.68, target:400},
+      {cat:'⛽ Gas', actual:41.23, target:100},
+      {cat:'🎭 Entertainment', actual:43.70, target:75},
+    ];
+    if (badge) badge.textContent = 'Mar 2026 actuals';
+    body.innerHTML = fallback.map(({cat,actual,target}) => buildBudgetRow(cat, actual, target)).join('') +
+      `<div class="note red" style="margin-top:14px">⚠️ Dining is 3.5× over target. Import a new CSV to see live data.</div>`;
+    return;
+  }
+
+  // Live data from imports
+  const dates = APP.transactions.map(t=>t.date).sort();
+  if (badge && dates.length) badge.textContent = `${dates[0]} → ${dates[dates.length-1]}`;
+
+  const cats = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  body.innerHTML = cats.map(([cat, actual]) => {
+    const label = (CAT_EMOJIS[cat]||'📦') + ' ' + cat;
+    const target = APP.targets[cat]||0;
+    return buildBudgetRow(label, actual, target, cat);
+  }).join('');
+}
+
+function buildBudgetRow(label, actual, target, catKey) {
+  const over = target > 0 && actual > target;
+  const pct = target > 0 ? Math.min(actual/target*100, 100) : Math.min(actual/500*100, 100);
+  const fillColor = over ? 'var(--danger)' : 'var(--accent2)';
+  const targetPct = target > 0 ? Math.min(100, 100) : 0;
+  const onclick = catKey ? `onclick="openDrill('${catKey}')" style="cursor:pointer"` : '';
+  return `
+    <div class="budget-row" ${onclick}>
+      <div class="budget-meta">
+        <span class="budget-name">${label}</span>
+        <span class="budget-nums">
+          <span class="${over?'over':'under'}">${f$(actual)} actual</span>
+          ${target>0?` / ${f$(target)} target`:''}
+          ${over?` <span style="color:var(--danger);font-size:10px">+${f$(actual-target)}</span>`:''}
+        </span>
+      </div>
+      <div class="budget-track">
+        ${target>0?`<div class="budget-target-line" style="left:${(target/Math.max(actual,target)*100).toFixed(1)}%"></div>`:''}
+        <div class="budget-actual" style="width:${pct.toFixed(1)}%;background:${fillColor};height:100%;border-radius:10px;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>
+      </div>
+    </div>`;
+}
+
+// ── DRILL DOWN ─────────────────────────────────────────────────────────────
+function openDrill(cat) {
+  const txns = APP.transactions.filter(t=>t.category===cat&&t.amount<0).sort((a,b)=>b.date.localeCompare(a.date));
+  const total = txns.reduce((s,t)=>s+Math.abs(t.amount),0);
+  const target = APP.targets[cat]||0;
+  const over = target>0 && total>target;
+  
+  document.getElementById('drill-title').textContent = `${CAT_EMOJIS[cat]||''} ${cat} · ${f$(total)}`;
+  document.getElementById('drill-body').innerHTML = `
+    ${target>0?`<div style="padding:12px 0;margin-bottom:4px;display:flex;gap:20px;font-family:var(--mono);font-size:12px;border-bottom:1px solid #2a2a30;margin-bottom:8px">
+      <span>Actual: <strong style="color:${over?'var(--danger)':'var(--accent2)'}">${f$c(total)}</strong></span>
+      <span style="color:#888896">Target: ${f$c(target)}</span>
+      <span style="color:${over?'var(--danger)':'var(--accent2)'}">${over?'Over '+f$c(total-target):'Under '+f$c(target-total)}</span>
+    </div>`:''}
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
+      <thead><tr>
+        <th style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#888896;padding:8px 0;text-align:left;border-bottom:1px solid #2a2a30">Date</th>
+        <th style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#888896;padding:8px 8px;text-align:left;border-bottom:1px solid #2a2a30">Description</th>
+        <th style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#888896;padding:8px 0;text-align:right;border-bottom:1px solid #2a2a30">Amount</th>
+        <th style="border-bottom:1px solid #2a2a30"></th>
+      </tr></thead>
+      <tbody>${txns.map(t=>{
+        const idx = APP.transactions.indexOf(t);
+        return `<tr style="border-bottom:1px solid #2a2a30">
+          <td style="padding:9px 0;font-family:var(--mono);font-size:11px;color:#888896;white-space:nowrap">${t.date}</td>
+          <td style="padding:9px 8px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.desc}</td>
+          <td style="padding:9px 0;font-family:var(--mono);color:var(--danger);text-align:right">${f$c(Math.abs(t.amount))}</td>
+          <td style="padding:9px 0;text-align:right">
+            <button onclick="closeDrill();openEditTxn(${idx})" style="background:transparent;border:1px solid #2a2a30;color:#888896;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px">Edit</button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+  
+  document.getElementById('drill-modal').style.display='flex';
+}
+function closeDrill(e) {
+  if (!e || e.target===document.getElementById('drill-modal')) document.getElementById('drill-modal').style.display='none';
+}
+
+// ── TRANSACTION EDITOR ─────────────────────────────────────────────────────
+function buildCatOptions(selected) {
+  return CATEGORIES.map(c=>`<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('');
+}
+function openEditTxn(idx) {
+  APP.editingTxnIdx = idx;
+  const t = APP.transactions[idx];
+  document.getElementById('edit-date').value = t.date;
+  document.getElementById('edit-desc').value = t.desc;
+  document.getElementById('edit-amount').value = t.amount;
+  document.getElementById('edit-notes').value = t.notes||'';
+  document.getElementById('edit-cat').innerHTML = buildCatOptions(t.category);
+  document.getElementById('txn-modal').style.display='flex';
+}
+function closeTxnModal(e) {
+  if (!e || e.target===document.getElementById('txn-modal')) {
+    document.getElementById('txn-modal').style.display='none'; APP.editingTxnIdx=null;
+  }
+}
+function saveTxn() {
+  const i = APP.editingTxnIdx; if(i===null) return;
+  APP.transactions[i].desc = document.getElementById('edit-desc').value;
+  APP.transactions[i].amount = parseFloat(document.getElementById('edit-amount').value);
+  APP.transactions[i].category = document.getElementById('edit-cat').value;
+  APP.transactions[i].notes = document.getElementById('edit-notes').value;
+  saveState(); renderSpending(); closeTxnModal();
+}
+function deleteTxn() {
+  if(APP.editingTxnIdx===null||!confirm('Delete this transaction?')) return;
+  APP.transactions.splice(APP.editingTxnIdx,1);
+  saveState(); renderSpending(); closeTxnModal();
+  document.getElementById('drill-modal').style.display='none';
+}
+
+// ── BALANCE EDITOR ─────────────────────────────────────────────────────────
+const BAL_LABELS = {checking:'BofA Checking',savings:'BofA Savings',chase:'Chase Marriott Balance',sofi:'SoFi Loan Balance'};
+const BAL_IDS = {checking:'live-checking',savings:'live-savings',chase:'live-chase-bal',sofi:'live-sofi-bal'};
+
+function editBalance(key) {
+  APP.editingBalKey = key;
+  document.getElementById('bal-modal-title').textContent = `Update: ${BAL_LABELS[key]}`;
+  document.getElementById('bal-input').value = APP.balances[key];
+  document.getElementById('bal-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('bal-input').select(),50);
+}
+function saveBalance() {
+  const key = APP.editingBalKey; if(!key) return;
+  const val = parseFloat(document.getElementById('bal-input').value)||0;
+  APP.balances[key] = val;
+  const el = document.getElementById(BAL_IDS[key]);
+  if (el) el.textContent = '$'+val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  // Update combined liquid total
+  const liquid = APP.balances.checking + APP.balances.savings;
+  saveState();
+  document.getElementById('bal-modal').style.display='none';
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+loadState();
+renderSpending();
+
+// Restore saved balances to DOM
+Object.entries(BAL_IDS).forEach(([key,id])=>{
+  const el = document.getElementById(id);
+  if (el && APP.balances[key]!==undefined) {
+    el.textContent = '$'+APP.balances[key].toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  }
+});
+
+if (APP.transactions.length) {
+  document.getElementById('last-updated').textContent = `${APP.transactions.length} transactions loaded`;
+}
+</script>
+
+</body>
+</html>
