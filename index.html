@@ -1502,8 +1502,7 @@ function processCSV(text, fname) {
   
   const result = Papa.parse(text, {header:true, skipEmptyLines:true, trimHeaders:true});
   const rows = result.data;
-  if (!rows.length) { log.textContent += '❌ No rows found
-'; return; }
+  if (!rows.length) { log.textContent += 'No rows found\n'; return; }
   
   const fmt = detectFmt(Object.keys(rows[0]));
   log.textContent += `Format: ${fmt.toUpperCase()}
