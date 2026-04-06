@@ -410,7 +410,7 @@
 
 <header>
   <div class="logo">FinanceHub</div>
-  <div class="header-actions" style="display:flex;gap:8px;align-items:center"><span style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="last-updated"></span><button onclick="openImport()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer">+ Import CSV</button></div>
+  <div class="header-actions" style="display:flex;gap:8px;align-items:center"><span style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="last-updated"></span><button id="import-btn" onclick="openImport()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer">+ Import CSV</button></div>
   <div class="header-meta">
     MEAGAN E. PRATT &nbsp;·&nbsp; <span>April 2026</span>
   </div>
@@ -1305,7 +1305,7 @@
 </script>
 
 <!-- ── IMPORT MODAL ── -->
-<div id="import-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:1000;align-items:center;justify-content:center;padding:20px">
+<div id="import-modal" style="position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px;display:none">
   <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:540px;max-height:85vh;overflow:auto" onclick="event.stopPropagation()">
     <div style="padding:20px 24px 16px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between">
       <span style="font-weight:600;font-size:15px">Import Statement CSV</span>
@@ -1329,7 +1329,7 @@
 </div>
 
 <!-- ── BALANCE EDIT MODAL ── -->
-<div id="bal-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:1000;align-items:center;justify-content:center">
+<div id="bal-modal" style="position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center">
   <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:14px;width:320px;padding:24px" onclick="event.stopPropagation()">
     <div style="font-weight:600;font-size:14px;margin-bottom:16px" id="bal-modal-title">Update Balance</div>
     <input type="number" id="bal-input" step="0.01" style="width:100%;background:#131316;color:#e8e8ec;border:1px solid #2a2a30;border-radius:8px;padding:10px 14px;font-size:15px;font-family:var(--mono);margin-bottom:16px">
@@ -1341,7 +1341,7 @@
 </div>
 
 <!-- ── DRILL DOWN MODAL ── -->
-<div id="drill-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:1000;align-items:center;justify-content:center;padding:20px" onclick="closeDrill(event)">
+<div id="drill-modal" style="position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px" onclick="closeDrill(event)">
   <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:680px;max-height:85vh;overflow:auto" onclick="event.stopPropagation()">
     <div style="padding:18px 24px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#1e1e22;z-index:10">
       <span style="font-weight:600;font-size:15px" id="drill-title">Category</span>
@@ -1352,7 +1352,7 @@
 </div>
 
 <!-- ── TXN EDIT MODAL ── -->
-<div id="txn-modal" style="display:none;position:fixed;inset:0;background:#00000099;z-index:1100;align-items:center;justify-content:center;padding:20px" onclick="closeTxnModal(event)">
+<div id="txn-modal" style="position:fixed;inset:0;background:#00000099;z-index:9999;align-items:center;justify-content:center;padding:20px" onclick="closeTxnModal(event)">
   <div style="background:#1e1e22;border:1px solid #2a2a30;border-radius:16px;width:100%;max-width:500px" onclick="event.stopPropagation()">
     <div style="padding:18px 24px 14px;border-bottom:1px solid #2a2a30;display:flex;align-items:center;justify-content:space-between">
       <span style="font-weight:600;font-size:15px">Edit Transaction</span>
@@ -1517,7 +1517,20 @@ function processCSV(text, fname) {
 }
 
 // ── IMPORT HANDLERS ────────────────────────────────────────────────────────
-function openImport() { document.getElementById('import-modal').style.display='flex'; }
+function openImport() {
+  var m = document.getElementById('import-modal');
+  m.style.position = 'fixed';
+  m.style.inset = '0';
+  m.style.background = 'rgba(0,0,0,0.85)';
+  m.style.zIndex = '9999';
+  m.style.display = 'flex';
+  m.style.alignItems = 'center';
+  m.style.justifyContent = 'center';
+  m.style.padding = '20px';
+  document.getElementById('import-log').style.display='none';
+  document.getElementById('import-log').textContent='';
+  document.getElementById('csv-input').value='';
+}
 function closeImport() { document.getElementById('import-modal').style.display='none'; }
 function handleFile(e) {
   const f = e.target.files[0]; if(!f) return;
@@ -1632,7 +1645,8 @@ function openDrill(cat) {
       }).join('')}</tbody>
     </table>`;
   
-  document.getElementById('drill-modal').style.display='flex';
+  var dm = document.getElementById('drill-modal');
+  dm.style.cssText = 'position:fixed;inset:0;background:#00000099;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
 }
 function closeDrill(e) {
   if (!e || e.target===document.getElementById('drill-modal')) document.getElementById('drill-modal').style.display='none';
@@ -1650,7 +1664,8 @@ function openEditTxn(idx) {
   document.getElementById('edit-amount').value = t.amount;
   document.getElementById('edit-notes').value = t.notes||'';
   document.getElementById('edit-cat').innerHTML = buildCatOptions(t.category);
-  document.getElementById('txn-modal').style.display='flex';
+  var tm = document.getElementById('txn-modal');
+  tm.style.cssText = 'position:fixed;inset:0;background:#00000099;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
 }
 function closeTxnModal(e) {
   if (!e || e.target===document.getElementById('txn-modal')) {
@@ -1680,7 +1695,8 @@ function editBalance(key) {
   APP.editingBalKey = key;
   document.getElementById('bal-modal-title').textContent = `Update: ${BAL_LABELS[key]}`;
   document.getElementById('bal-input').value = APP.balances[key];
-  document.getElementById('bal-modal').style.display='flex';
+  var bm = document.getElementById('bal-modal');
+  bm.style.cssText = 'position:fixed;inset:0;background:#00000099;z-index:9999;display:flex;align-items:center;justify-content:center';
   setTimeout(()=>document.getElementById('bal-input').select(),50);
 }
 function saveBalance() {
@@ -1698,6 +1714,8 @@ function saveBalance() {
 // ── INIT ───────────────────────────────────────────────────────────────────
 loadState();
 renderSpending();
+
+// Balances restored above
 
 // Restore saved balances to DOM
 Object.entries(BAL_IDS).forEach(([key,id])=>{
