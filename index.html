@@ -1386,474 +1386,697 @@
 <script>
 
 window.addEventListener('error', function(e) { console.error('JS Error:', e.message, 'at', e.filename, e.lineno); });
-// ── DATA LAYER ─────────────────────────────────────────────────────────────
-const CATEGORIES = ['Income','Mortgage','Fixed Bills','Debt Payments','Groceries','Dining Out','Pets','Pharmacy/Health','Gas','Shopping','Subscriptions','Utilities','Entertainment','Travel','Services','Transfers','Savings','FSA / Therapy','Other'];
 
-const TARGETS = {
-  'Groceries':400,'Dining Out':300,'Pets':350,'Pharmacy/Health':150,
-  'Gas':100,'Shopping':150,'Entertainment':75,'Services':270,
-  'Subscriptions':390,'Travel':0,'Other':100,'FSA / Therapy':270
+window.onerror = function(msg,src,line,col,err){ console.error('ERR',msg,'@',line,col,err); };
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+var DB = {
+  transactions: [],   // [{id,date,month,desc,amount,category,notes,source}]
+  balances: { checking:4533.50, savings:718.47, chase:13992.03, sofi:29000.79 },
+  targets: {
+    'Groceries':400,'Dining Out':300,'Pets':350,'Pharmacy/Health':150,
+    'Gas':100,'Shopping':150,'Entertainment':75,'Services':270,
+    'Subscriptions':390,'Travel':0,'Other':100,'FSA/Therapy':270
+  },
+  debts: [
+    {name:'Chase Marriott',balance:13992.03,rate:26.74,monthly:1200,status:'attack',note:'~$5,625 at 0% until Nov 2026'},
+    {name:'SoFi Personal Loan',balance:29000.79,rate:7.80,monthly:1807.80,status:'active',note:'Ends Aug 2027'},
+    {name:'Affirm – Auto Tek #1',balance:1187.36,rate:0,monthly:118.74,status:'run',note:'0% ends Jan 2027'},
+    {name:'Affirm – Auto Tek #2',balance:1253.40,rate:0,monthly:125.49,status:'run',note:'0% ends Jan 2027'},
+    {name:'Affirm – Boardsmith',balance:488.98,rate:0,monthly:97.83,status:'run',note:'0% ends Aug 2026'},
+    {name:'Synchrony Sport (Sky)',balance:196.17,rate:0,monthly:30,status:'run',note:'Sky paying'},
+    {name:'Citi Simplicity',balance:0,rate:0,monthly:0,status:'paid',note:'Paid off Mar 25 ✅'},
+    {name:'Chase Prime Visa',balance:0,rate:0,monthly:0,status:'paid',note:'Paid off ✅'},
+    {name:'Discover',balance:0,rate:0,monthly:0,status:'paid',note:'Closed ✅'}
+  ],
+  selectedMonth: 'all',
+  editingTxn: null,
+  editingBalKey: null
 };
 
-const CAT_EMOJIS = {
-  'Dining Out':'🍽️','Groceries':'🛒','Pets':'🐾','Pharmacy/Health':'💊',
-  'Gas':'⛽','Shopping':'🛍️','Entertainment':'🎭','Services':'🧰',
-  'Subscriptions':'📱','Travel':'✈️','Income':'💵','Mortgage':'🏠',
-  'Fixed Bills':'🏠','Debt Payments':'💳','Savings':'🏦',
-  'Transfers':'💸','Utilities':'💡','FSA / Therapy':'🧠','Other':'📦'
+function dbSave(){
+  try{ localStorage.setItem('pratt_budget_v4', JSON.stringify({
+    transactions: DB.transactions,
+    balances: DB.balances,
+    targets: DB.targets,
+    debts: DB.debts
+  })); }catch(e){ console.warn('save failed',e); }
+}
+
+function dbLoad(){
+  try{
+    var raw = localStorage.getItem('pratt_budget_v4');
+    if(!raw) return;
+    var d = JSON.parse(raw);
+    if(d.transactions) DB.transactions = d.transactions;
+    if(d.balances) DB.balances = d.balances;
+    if(d.targets) Object.assign(DB.targets, d.targets);
+    if(d.debts) DB.debts = d.debts;
+  }catch(e){ console.warn('load failed',e); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CATEGORIES & RULES
+// ═══════════════════════════════════════════════════════════════
+var CATS = ['Income','Mortgage','Fixed Bills','Debt Payments','Utilities',
+  'Groceries','Dining Out','Pets','Pharmacy/Health','Gas','Shopping',
+  'Subscriptions','Entertainment','Travel','Services','FSA/Therapy',
+  'Savings','Transfers','Other'];
+
+var CAT_COLOR = {
+  'Income':'#4fc38a','Mortgage':'#e05555','Fixed Bills':'#e07070',
+  'Debt Payments':'#f0a048','Utilities':'#888896','Groceries':'#7c6af7',
+  'Dining Out':'#e07555','Pets':'#5dbcd2','Pharmacy/Health':'#a78af7',
+  'Gas':'#aaaaaa','Shopping':'#f0c048','Subscriptions':'#6aabf7',
+  'Entertainment':'#d47cf0','Travel':'#4fc3c3','Services':'#f0a068',
+  'FSA/Therapy':'#80c9a0','Savings':'#4fc38a','Transfers':'#666678','Other':'#666678'
 };
 
-const RULES = [
-  {r:/payroll|ferrovial|sbtpg|direct.?dep|NSM.?DBA/i, c:'Income'},
-  {r:/zelle.?pay.*from|zelle.*from|BKOFAME/i, c:'Income'},
-  {r:/rocket.?mortgage|mr.?cooper|NSM.?DBA.*mortgage/i, c:'Mortgage'},
-  {r:/sofi.?bank|sofi.*pl/i, c:'Fixed Bills'},
-  {r:/easton.?park|hoa/i, c:'Fixed Bills'},
-  {r:/t.?mobile|at&t/i, c:'Fixed Bills'},
-  {r:/bluebonnet|centerpoint|cpenergy|city.?of.?aus/i, c:'Utilities'},
-  {r:/crunch|boxing|fitness|gym|whoop/i, c:'Subscriptions'},
-  {r:/chase.?credit|credit.?crd|citi.*card|discover.*pay|synchrony|affirm/i, c:'Debt Payments'},
-  {r:/online.?bank.*transfer.*to.?sav|transfer.*sav/i, c:'Savings'},
-  {r:/wealthfront/i, c:'Savings'},
-  {r:/netflix|peacock|spotify|siriusxm|sirius|apple.*bill|uber.*one|google.*one|shortwave|bespoke|linkedin|anthropic/i, c:'Subscriptions'},
-  {r:/doordash|grubhub|ubereats/i, c:'Dining Out'},
-  {r:/TST\*CENIZ|cenizo/i, c:'Dining Out'},
-  {r:/TST\*SANO|sano.?market/i, c:'Dining Out'},
-  {r:/TST\*RADIO|radio.?east/i, c:'Dining Out'},
-  {r:/TST\*SALT|salt.?straw/i, c:'Dining Out'},
-  {r:/starbucks|chipotle|doordash|gati|veracruz|bouldin|mammoth.?brew|buddha|crumpet|june|alana|highley|mcdonalds|mcdonald/i, c:'Dining Out'},
-  {r:/heb|costco(?!.*gas)|trader.?joe|wheatsville|big.?brazos|home.?chef/i, c:'Groceries'},
-  {r:/chewy|viva.?raw|open.?farm|austin.?urban.?vet|vetcove|petco/i, c:'Pets'},
-  {r:/peoples.?pharm|cvs|walgreens|pharmacy|drug/i, c:'Pharmacy/Health'},
-  {r:/7.?eleven|shell|costco.*gas|circle.?k/i, c:'Gas'},
-  {r:/ntta|autocharge/i, c:'Gas'},
-  {r:/amazon|target|walmart|homegoods|hobby.?lobby|uncommon|br.?factory|east.?austin.?succ/i, c:'Shopping'},
-  {r:/delta|united|expedia|airbnb|hotel|mammoth.?mtn|snowmobile|captain.?dave|seat.?engine/i, c:'Travel'},
-  {r:/JESSIE.?WH|simplTX|outwell/i, c:'FSA / Therapy'},
-  {r:/alamo|trail.?of.?light|tks.?arb|paramount|austin.?theatre/i, c:'Entertainment'},
-  {r:/SHORTWA/i, c:'Subscriptions'},
-  {r:/vivint|home.?team.?pest|radiant.?plumb|austin.?bin.?wash|westbank/i, c:'Fixed Bills'},
-  {r:/zelle.?pay.*to|venmo|paypal/i, c:'Transfers'},
-  {r:/strong.?paws|donation/i, c:'Other'},
-  {r:/overdraft.?prot/i, c:'Transfers'},
+// Rules tuned for BofA CSV truncated descriptions
+var RULES = [
+  // Income
+  [/FERROVIAL|PAYROLL|SBTPG LLC|direct.dep/i,'Income'],
+  [/Zelle payment from|Zelle.*from.*SKYLAR|Zelle.*from.*BAILEY|BKOFAME.*\d/i,'Income'],
+  [/NSM.?DBA.*PAYROLL/i,'Income'],
+  // Mortgage
+  [/ROCKET.?MORT|NSM.?DBA.*MORTGAGE|MR.?COOPER/i,'Mortgage'],
+  // Debt
+  [/SoFi Bank|SOFI.*PL/i,'Debt Payments'],
+  [/AFFIRM\.COM|SP\+AFF/i,'Debt Payments'],
+  [/CHASE CREDIT CRD|CHASE.*EPAY|CITI.*CARD|DISCOVER.*E-PAYMENT|Synchrony Bank/i,'Debt Payments'],
+  // Savings
+  [/Online Banking transfer.*SAV|Wealthfront|KEEP THE CHANGE/i,'Savings'],
+  // Transfers out
+  [/Zelle payment to|VENMO|PayPal/i,'Transfers'],
+  [/OVERDRAFT PROT/i,'Transfers'],
+  // Fixed bills
+  [/EASTON.?PARK|HOA/i,'Fixed Bills'],
+  [/VIVINT|HOME.?TEAM.?PEST|RADIANT.?PLUMB|AUSTIN.?BIN.?WASH/i,'Fixed Bills'],
+  [/SALT.?LIGHT|LOC.?CITIZEN/i,'Fixed Bills'],
+  // Utilities
+  [/BLUEBONNET|CPENERGY|ENTEX|CenterPoint|City of Austin|CITY.?OF.?AUS/i,'Utilities'],
+  [/T-MOBILE|T\.MOBILE|AT&T/i,'Utilities'],
+  [/NTTA|AUTOCHARGE.*972/i,'Gas'],
+  // Subscriptions
+  [/CRUNCH.?FIT/i,'Subscriptions'],
+  [/Netflix|NETFLIX/i,'Subscriptions'],
+  [/Peacock|PEACOCK/i,'Subscriptions'],
+  [/WHOOP/i,'Subscriptions'],
+  [/SIRIUSXM|SXM\*/i,'Subscriptions'],
+  [/SPOTIFY/i,'Subscriptions'],
+  [/UBER.*ONE|UBER\s*\*ONE/i,'Subscriptions'],
+  [/APPLE.COM.BILL|APPLE.*BILL/i,'Subscriptions'],
+  [/GOOGLE.*GOOGLE|GOOGLE.*ONE/i,'Subscriptions'],
+  [/SHORTWAVE.?EAST|SHORTWA/i,'Subscriptions'],
+  [/LINKEDIN/i,'Subscriptions'],
+  [/ANTHROPIC|CLAUDE/i,'Subscriptions'],
+  [/BESPOKE.?POST/i,'Subscriptions'],
+  [/AUSTIN.?WOMEN|AUSTIN.*BOXING/i,'Subscriptions'],
+  [/AUSTIN.?THEATRE/i,'Subscriptions'],
+  // FSA/Therapy
+  [/JESSIE.?WH|SIMPLTX|simplTX|OUTWELL/i,'FSA/Therapy'],
+  // Dining
+  [/DOORDASH|DOOR.?DASH/i,'Dining Out'],
+  [/TST\*CENIZ|CENIZO/i,'Dining Out'],
+  [/TST\*SANO|SANO.?MARKET/i,'Dining Out'],
+  [/TST\*RADIO|RADIO.?EAST/i,'Dining Out'],
+  [/TST\*SALT|SALT.?STRAW/i,'Dining Out'],
+  [/TST\*LEYE|TST\*GATI|GATI/i,'Dining Out'],
+  [/STARBUCKS|CHIPOTLE|MCDONALD|BURGER.?KING|WHOLY.?BAGEL/i,'Dining Out'],
+  [/BUDDHA.?BREW|CREPE.?CRAZY|JUNE.?S.*AUSTIN|CENIZO|VERACRUZ/i,'Dining Out'],
+  [/SQ.*BARTON|SQ.*BUDDHAS|SQ.*NOUGATINE|SQ.*BERRY|SQ.*ALANA/i,'Dining Out'],
+  [/FLATTRACK|CRUMPET|SQ.*TKS/i,'Dining Out'],
+  [/GRIZZLY.?COURT|ELEVEN.?53|THE.?STOVE|ERICK.?SCHAT/i,'Dining Out'],
+  [/MAMMOTH.?BREW|SQ.*MAMMOTH/i,'Dining Out'],
+  [/BOULDIN.?ACRES/i,'Dining Out'],
+  [/HIGHLEY.?LIKELY|PERRY.?BROOKS/i,'Dining Out'],
+  // Groceries
+  [/H-E-B|HEB.?#|WHEATSVILLE|TRADER.?JOE|BIG.?BRAZOS|HOME.?CHEF/i,'Groceries'],
+  [/COSTCO(?!.*GAS)(?!.*WAREHOUSE)|COSTCO.?WAREHOUSE/i,'Groceries'],
+  // Pets
+  [/CHEWY\.COM|VIVA.?RAW|OPEN.?FARM|AUSTIN.?URBAN.?VET|VETCOVE/i,'Pets'],
+  // Pharmacy
+  [/PEOPLES.?PHARM|PEOPLES.*PHARMA|CVS|WALGREENS/i,'Pharmacy/Health'],
+  [/SP.?ARMRA|BUCKEDUP|ARMRA/i,'Pharmacy/Health'],
+  // Gas
+  [/7-ELEVEN|7.?ELEVEN|SHELL.?OIL|COSTCO.*GAS|CIRCLE.?K/i,'Gas'],
+  // Shopping
+  [/HOMEGOODS|HOBBY.?LOBBY|UNCOMMON.?GOODS|BR.?FACTORY|BRFACTORY|TARGET(?!.*PHARMACY)/i,'Shopping'],
+  [/EAST.?AUSTIN.?SUCC|PEPPER.?PALACE|STRONG.?PAWS/i,'Shopping'],
+  [/WESTBANK.?DRY|SPINZONE/i,'Services'],
+  [/SEAT.?ENGINE|ALAMO.?DRAFT|TRAIL.?OF.?LIGHT|PARAMOUNT.?THEATRE/i,'Entertainment'],
+  [/CAPTAIN.?DAVE|DJ.?SNOWMOBILE|MAMMOTH.?MTN|MAMMOTH.*BOOK/i,'Travel'],
+  [/DELTA.?AIR|UNITED.*AIR|EXPEDIA|PREMIUM.?PARKING|LADOT.?METER/i,'Travel'],
+  [/AUSTIN.?AIRPORT/i,'Travel'],
+  [/STEAM.?GAMES/i,'Entertainment'],
 ];
 
-function categorize(desc) {
-  for (const {r,c} of RULES) if (r.test(desc||'')) return c;
+function categorize(desc){
+  if(!desc) return 'Other';
+  for(var i=0;i<RULES.length;i++){
+    if(RULES[i][0].test(desc)) return RULES[i][1];
+  }
   return 'Other';
 }
 
-// ── STATE ──────────────────────────────────────────────────────────────────
-let APP = {
-  transactions: [],
-  balances: { checking: 4533.50, savings: 718.47, chase: 13992.03, sofi: 29000.79 },
-  editingTxnIdx: null,
-  editingBalKey: null,
-  targets: {...TARGETS}
-};
-
-function saveState() {
-  try { localStorage.setItem('pratt_hub_v3', JSON.stringify(APP)); } catch(e) {}
-}
-function loadState() {
-  try {
-    const d = localStorage.getItem('pratt_hub_v3');
-    if (d) { const p = JSON.parse(d); Object.assign(APP, p); }
-  } catch(e) {}
+// ═══════════════════════════════════════════════════════════════
+// CSV PARSING
+// ═══════════════════════════════════════════════════════════════
+function parseMonth(dateStr){
+  if(!dateStr) return '';
+  // Handle M/D/YYYY or MM/DD/YYYY
+  var m = dateStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if(m){
+    var yr = m[3].length===2 ? '20'+m[3] : m[3];
+    return yr+'-'+m[1].padStart(2,'0');
+  }
+  // Handle YYYY-MM-DD
+  var m2 = dateStr.match(/(\d{4})-(\d{2})/);
+  if(m2) return m2[1]+'-'+m2[2];
+  return dateStr.slice(0,7);
 }
 
-// ── FORMAT ─────────────────────────────────────────────────────────────────
-function f$(n) {
-  const abs = Math.abs(n);
-  const str = abs.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
-  return n < 0 ? `(${str})` : str;
-}
-function f$c(n) { return Math.abs(n).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2}); }
+function processCSV(text, fname){
+  var log = document.getElementById('import-log');
+  if(log){ log.style.display='block'; log.textContent='Parsing '+fname+'...\n'; }
 
-// ── CSV PARSING ────────────────────────────────────────────────────────────
-function detectFmt(headers) {
-  const h = headers.map(x=>(x||'').toLowerCase().trim().replace(/"/g,''));
-  if (h.some(x=>x.includes('running'))) return 'bofa';
-  if (h.some(x=>x.includes('transaction date')) || h.some(x=>x.includes('post date'))) return 'chase';
-  if (h.includes('date') && h.includes('description') && h.includes('amount')) return 'bofa';
-  return 'generic';
-}
+  // BofA: skip summary header block, find real "Date," row
+  var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  var headerIdx = 0;
+  for(var i=0;i<Math.min(lines.length,20);i++){
+    var stripped = lines[i].replace(/"/g,'').trim();
+    if(/^Date\s*,/i.test(stripped) || /^Date\s*\t/i.test(stripped)){
+      headerIdx = i; break;
+    }
+  }
+  if(headerIdx>0 && log) log.textContent += 'Skipping '+headerIdx+' summary rows\n';
+  var csvText = lines.slice(headerIdx).join('\n');
 
-function parseRows(rows, fmt) {
-  const txns = [];
-  for (const r of rows) {
-    let date='', desc='', amt=0;
-    // Normalize keys - strip quotes and whitespace
-    const norm = {};
-    Object.keys(r).forEach(k => { norm[k.trim().replace(/"/g,'')] = (r[k]||'').trim().replace(/"/g,''); });
+  var result;
+  try{
+    result = Papa.parse(csvText, {
+      header:true, skipEmptyLines:true,
+      transformHeader: function(h){ return h.trim().replace(/^"|"$/g,''); }
+    });
+  } catch(e){
+    if(log) log.textContent += 'Parse error: '+e.message+'\n';
+    return;
+  }
 
-    if (fmt==='bofa') {
-      date = norm['Date']||'';
-      desc = norm['Description']||'';
-      amt  = parseFloat((norm['Amount']||'0').replace(/[$,\s]/g,''));
-    } else if (fmt==='chase') {
-      date = norm['Transaction Date']||norm['Post Date']||'';
-      desc = norm['Description']||'';
-      amt  = parseFloat((norm['Amount']||'0').replace(/[$,\s]/g,''));
+  var rows = result.data;
+  if(!rows.length){ if(log) log.textContent += 'No rows found\n'; return; }
+
+  // Detect format from headers
+  var headers = Object.keys(rows[0]);
+  if(log) log.textContent += 'Headers: '+headers.join(', ')+'\n';
+
+  var fmt = 'generic';
+  var hLower = headers.map(function(h){ return h.toLowerCase().trim(); });
+  if(hLower.some(function(h){ return h.includes('running'); })) fmt='bofa';
+  else if(hLower.some(function(h){ return h.includes('transaction date'); })) fmt='chase';
+  else if(hLower.includes('date') && hLower.includes('description') && hLower.includes('amount')) fmt='bofa';
+  if(log) log.textContent += 'Format: '+fmt.toUpperCase()+'\n';
+
+  var SKIP = /beginning balance|ending balance|keep the change|overdraft prot.*from/i;
+
+  var parsed = [];
+  rows.forEach(function(r){
+    // Normalize: strip quotes from keys and values
+    var n = {};
+    Object.keys(r).forEach(function(k){
+      n[k.trim().replace(/^"|"$/g,'')] = String(r[k]||'').trim().replace(/^"|"$/g,'');
+    });
+
+    var date='', desc='', amtStr='';
+    if(fmt==='bofa'){
+      date=n['Date']||n['date']||'';
+      desc=n['Description']||n['description']||'';
+      amtStr=n['Amount']||n['amount']||'';
+    } else if(fmt==='chase'){
+      date=n['Transaction Date']||n['Post Date']||'';
+      desc=n['Description']||'';
+      amtStr=n['Amount']||'';
     } else {
-      const keys = Object.keys(norm);
-      const dk = keys.find(k=>/date/i.test(k))||keys[0];
-      const ek = keys.find(k=>/desc|memo|name|payee/i.test(k))||keys[1];
-      const ak = keys.find(k=>/amount|amt/i.test(k))||keys[2];
-      date=norm[dk]||''; desc=norm[ek]||'';
-      amt=parseFloat((norm[ak]||'0').replace(/[$,\s()]/g,''));
+      var ks=Object.keys(n);
+      var dk=ks.find(function(k){ return /date/i.test(k); })||ks[0];
+      var ek=ks.find(function(k){ return /desc|memo|name/i.test(k); })||ks[1];
+      var ak=ks.find(function(k){ return /amount|amt/i.test(k); })||ks[2];
+      date=n[dk]||''; desc=n[ek]||''; amtStr=n[ak]||'';
     }
 
-    // Skip non-transaction rows
-    if (!date || !desc || isNaN(amt)) continue;
-    if (desc.toLowerCase().includes('beginning balance')) continue;
-    if (desc.toLowerCase().includes('keep the change')) continue;
-    if (desc.toLowerCase().includes('ending balance')) continue;
+    if(!date||!desc) return;
+    if(SKIP.test(desc)) return;
 
-    txns.push({
-      id: Math.random().toString(36).slice(2),
+    var amt = parseFloat(amtStr.replace(/[$,\s]/g,''));
+    if(isNaN(amt)) return;
+
+    var month = parseMonth(date);
+    var cat = categorize(desc);
+
+    parsed.push({
+      id: Math.random().toString(36).slice(2,10),
       date: date.trim(),
+      month: month,
       desc: desc.trim(),
       amount: amt,
-      category: categorize(desc),
-      notes: ''
+      category: cat,
+      notes: '',
+      source: fmt
     });
+  });
+
+  // Deduplicate
+  var existing = {};
+  DB.transactions.forEach(function(t){ existing[t.date+'|'+t.amount+'|'+t.desc.slice(0,25)]=1; });
+  var fresh = parsed.filter(function(t){ return !existing[t.date+'|'+t.amount+'|'+t.desc.slice(0,25)]; });
+
+  DB.transactions = DB.transactions.concat(fresh);
+  DB.transactions.sort(function(a,b){ return b.date.localeCompare(a.date); });
+  dbSave();
+
+  // Log category breakdown
+  var cats = {};
+  fresh.forEach(function(t){ cats[t.category]=(cats[t.category]||0)+1; });
+  if(log){
+    log.textContent += '✓ Imported '+fresh.length+' new ('+( parsed.length-fresh.length)+' dupes skipped)\n';
+    Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; }).forEach(function(c){
+      log.textContent += '  '+c+': '+cats[c]+'\n';
+    });
+    log.textContent += 'Total transactions: '+DB.transactions.length+'\n';
   }
-  return txns;
+
+  renderAll();
+  document.getElementById('last-updated').textContent = 'Updated '+new Date().toLocaleTimeString();
 }
 
-function processCSV(text, fname) {
-  const log = document.getElementById('import-log');
-  log.style.display = 'block';
-  log.textContent = 'Parsing ' + fname + '...\n';
+// ═══════════════════════════════════════════════════════════════
+// MONTH FILTER
+// ═══════════════════════════════════════════════════════════════
+function getMonths(){
+  var set = {};
+  DB.transactions.forEach(function(t){ if(t.month) set[t.month]=1; });
+  return Object.keys(set).sort().reverse();
+}
 
-  // BofA CSVs have a 6-row summary block before the real headers at row 7
-  // Detect and skip it by finding the line that starts with "Date,"
-  var lines = text.split('\n');
-  var headerIdx = 0;
-  for (var i = 0; i < Math.min(lines.length, 15); i++) {
-    var l = lines[i].trim();
-    if (l.match(/^Date[,\t]/i) || l.match(/^"Date"[,\t]/i)) {
-      headerIdx = i;
-      break;
-    }
+function renderMonthFilter(){
+  var wrap = document.getElementById('month-filter-wrap');
+  if(!wrap) return;
+  var months = getMonths();
+  if(!months.length){ wrap.innerHTML=''; return; }
+
+  var html = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+  html += '<span style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Filter:</span>';
+
+  var allActive = DB.selectedMonth==='all';
+  html += '<button onclick="setMonth(\'all\')" class="month-btn'+(allActive?' month-btn-active':'')+'" style="'+(allActive?'background:var(--accent);color:#fff;border-color:var(--accent)':'')+'">'+'All time'+'</button>';
+
+  months.forEach(function(m){
+    var label = new Date(m+'-02').toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    var active = DB.selectedMonth===m;
+    html += '<button onclick="setMonth(\''+m+'\')" class="month-btn'+(active?' month-btn-active':'')+'" style="'+(active?'background:var(--accent);color:#fff;border-color:var(--accent)':'')+'">'+''+label+'</button>';
+  });
+  html += '</div>';
+  wrap.innerHTML = html;
+
+  // Update period badge
+  var badge = document.getElementById('spending-period-badge');
+  if(badge){
+    if(DB.selectedMonth==='all') badge.textContent = months.length+' months loaded';
+    else badge.textContent = new Date(DB.selectedMonth+'-02').toLocaleDateString('en-US',{month:'long',year:'numeric'});
   }
-  if (headerIdx > 0) {
-    log.textContent += 'Skipping ' + headerIdx + ' summary rows (BofA format)\n';
-    text = lines.slice(headerIdx).join('\n');
-  }
+}
 
-  const result = Papa.parse(text, {header:true, skipEmptyLines:true, dynamicTyping:false});
-  const rows = result.data;
-  if (!rows.length) { log.textContent += 'No rows found\n'; return; }
-
-  // Log the detected headers so we can debug
-  const headers = Object.keys(rows[0]);
-  log.textContent += 'Headers: ' + headers.join(', ') + '\n';
-
-  const fmt = detectFmt(headers);
-  log.textContent += 'Format: ' + fmt.toUpperCase() + '\n';
-  
-  const parsed = parseRows(rows, fmt);
-  const existing = new Set(APP.transactions.map(t=>`${t.date}|${t.amount}|${t.desc.slice(0,20)}`));
-  const fresh = parsed.filter(t=>!existing.has(`${t.date}|${t.amount}|${t.desc.slice(0,20)}`));
-  
-  APP.transactions.push(...fresh);
-  saveState();
-  
-  const cats = {};
-  fresh.forEach(t=>{ cats[t.category]=(cats[t.category]||0)+1; });
-  log.textContent += `✅ Imported ${fresh.length} new (${parsed.length-fresh.length} dupes skipped)
-`;
-  Object.entries(cats).sort((a,b)=>b[1]-a[1]).forEach(([c,n])=>{ log.textContent += `  ${c}: ${n}
-`; });
-  
-  document.getElementById('import-txn-count').textContent = `${APP.transactions.length} total transactions`;
-  document.getElementById('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+function setMonth(m){
+  DB.selectedMonth = m;
+  renderMonthFilter();
   renderSpending();
+  renderSummaryStats();
 }
 
-// ── IMPORT HANDLERS ────────────────────────────────────────────────────────
-// openImport defined in first script block above
-// closeImport defined above
-function handleFile(e) {
-  const f = e.target.files[0]; if(!f) return;
-  processFile(f);
-}
-function processFile(f) {
-  if(!f) return;
-  const r = new FileReader();
-  r.onload = ev => processCSV(ev.target.result, f.name);
-  r.onerror = () => { document.getElementById('import-log').style.display='block'; document.getElementById('import-log').textContent='❌ Error reading file'; };
-  r.readAsText(f);
-}
-function handleDrop(e) {
-  e.preventDefault();
-  document.getElementById('drop-zone').style.borderColor='#2a2a30';
-  const f = e.dataTransfer.files[0];
-  if (f) processFile(f);
+function filteredTxns(){
+  if(DB.selectedMonth==='all') return DB.transactions;
+  return DB.transactions.filter(function(t){ return t.month===DB.selectedMonth; });
 }
 
-// ── SPENDING RENDERER ──────────────────────────────────────────────────────
-function getCatTotals() {
-  const skip = new Set(['Income','Mortgage','Fixed Bills','Debt Payments','Savings','Transfers']);
-  const totals = {};
-  APP.transactions.forEach(t => {
-    if (skip.has(t.category) || t.amount >= 0) return;
-    totals[t.category] = (totals[t.category]||0) + Math.abs(t.amount);
+// ═══════════════════════════════════════════════════════════════
+// SPENDING RENDERER
+// ═══════════════════════════════════════════════════════════════
+var SKIP_CATS = {'Income':1,'Mortgage':1,'Fixed Bills':1,'Debt Payments':1,'Savings':1,'Transfers':1};
+
+function getCatTotals(){
+  var totals = {};
+  filteredTxns().forEach(function(t){
+    if(SKIP_CATS[t.category]) return;
+    if(t.amount<0) totals[t.category]=(totals[t.category]||0)+Math.abs(t.amount);
   });
   return totals;
 }
 
-function renderSpending() {
-  const body = document.getElementById('live-spending-body');
-  const totals = getCatTotals();
-  const hasTxns = Object.keys(totals).length > 0;
-  const badge = document.getElementById('spending-period-badge');
-  
-  if (!hasTxns) {
-    // Fall back to hardcoded Mar 2026 actuals
-    const fallback = [
-      {cat:'🍽️ Dining Out', actual:1046.73, target:300},
-      {cat:'🐾 Pets', actual:513.78, target:350},
-      {cat:'💊 Pharmacy/Supplements', actual:347.35, target:150},
-      {cat:'🛍️ Shopping', actual:486.95, target:150},
-      {cat:'🛒 Groceries', actual:198.68, target:400},
-      {cat:'⛽ Gas', actual:41.23, target:100},
-      {cat:'🎭 Entertainment', actual:43.70, target:75},
-    ];
-    if (badge) badge.textContent = 'Mar 2026 actuals';
-    body.innerHTML = fallback.map(({cat,actual,target}) => buildBudgetRow(cat, actual, target)).join('') +
-      `<div class="note red" style="margin-top:14px">⚠️ Dining is 3.5× over target. Import a new CSV to see live data.</div>`;
+function renderSpending(){
+  var body = document.getElementById('live-spending-body');
+  if(!body) return;
+  renderMonthFilter();
+
+  var totals = getCatTotals();
+  var keys = Object.keys(totals).sort(function(a,b){ return totals[b]-totals[a]; });
+
+  if(!keys.length){
+    body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-family:var(--mono);font-size:13px">No spending data for this period<br><span style="font-size:11px;opacity:.6">Import a CSV or select a different month</span></div>';
     return;
   }
 
-  // Live data from imports
-  const dates = APP.transactions.map(t=>t.date).sort();
-  if (badge && dates.length) badge.textContent = `${dates[0]} → ${dates[dates.length-1]}`;
+  var maxAmt = Math.max.apply(null, keys.map(function(k){ return totals[k]; }));
+  var totalSpend = keys.reduce(function(s,k){ return s+totals[k]; },0);
 
-  const cats = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
-  body.innerHTML = cats.map(([cat, actual]) => {
-    const label = (CAT_EMOJIS[cat]||'📦') + ' ' + cat;
-    const target = APP.targets[cat]||0;
-    return buildBudgetRow(label, actual, target, cat);
-  }).join('');
-}
+  var html = '';
+  // Summary bar at top
+  html += '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:0 0 14px;border-bottom:1px solid var(--border);margin-bottom:14px">';
+  html += '<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">'+keys.length+' categories</span>';
+  html += '<span style="font-family:var(--mono);font-size:15px;font-weight:600;color:var(--danger)">'+f$(totalSpend)+' total</span>';
+  html += '</div>';
 
-function buildBudgetRow(label, actual, target, catKey) {
-  const over = target > 0 && actual > target;
-  const pct = target > 0 ? Math.min(actual/target*100, 100) : Math.min(actual/500*100, 100);
-  const fillColor = over ? 'var(--danger)' : 'var(--accent2)';
-  const targetPct = target > 0 ? Math.min(100, 100) : 0;
-  const onclick = catKey ? `onclick="openDrill('${catKey}')" style="cursor:pointer"` : '';
-  return `
-    <div class="budget-row" ${onclick}>
-      <div class="budget-meta">
-        <span class="budget-name">${label}</span>
-        <span class="budget-nums">
-          <span class="${over?'over':'under'}">${f$(actual)} actual</span>
-          ${target>0?` / ${f$(target)} target`:''}
-          ${over?` <span style="color:var(--danger);font-size:10px">+${f$(actual-target)}</span>`:''}
-        </span>
-      </div>
-      <div class="budget-track">
-        ${target>0?`<div class="budget-target-line" style="left:${(target/Math.max(actual,target)*100).toFixed(1)}%"></div>`:''}
-        <div class="budget-actual" style="width:${pct.toFixed(1)}%;background:${fillColor};height:100%;border-radius:10px;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>
-      </div>
-    </div>`;
-}
+  keys.forEach(function(cat){
+    var actual = totals[cat];
+    var target = DB.targets[cat]||0;
+    var over = target>0 && actual>target;
+    var pct = target>0 ? Math.min(actual/target*100,100) : Math.min(actual/maxAmt*100,100);
+    var barColor = over ? 'var(--danger)' : (actual>0 ? 'var(--accent2)' : 'var(--muted)');
+    var txnCount = filteredTxns().filter(function(t){ return t.category===cat&&t.amount<0; }).length;
 
-// ── DRILL DOWN ─────────────────────────────────────────────────────────────
-function openDrill(cat) {
-  const txns = APP.transactions.filter(t=>t.category===cat&&t.amount<0).sort((a,b)=>b.date.localeCompare(a.date));
-  const total = txns.reduce((s,t)=>s+Math.abs(t.amount),0);
-  const target = APP.targets[cat]||0;
-  const over = target>0 && total>target;
-  
-  document.getElementById('drill-title').textContent = `${CAT_EMOJIS[cat]||''} ${cat} · ${f$(total)}`;
-  document.getElementById('drill-body').innerHTML = `
-    ${target>0?`<div style="padding:12px 0;margin-bottom:4px;display:flex;gap:20px;font-family:var(--mono);font-size:12px;border-bottom:1px solid #2a2a30;margin-bottom:8px">
-      <span>Actual: <strong style="color:${over?'var(--danger)':'var(--accent2)'}">${f$c(total)}</strong></span>
-      <span style="color:#888896">Target: ${f$c(target)}</span>
-      <span style="color:${over?'var(--danger)':'var(--accent2)'}">${over?'Over '+f$c(total-target):'Under '+f$c(target-total)}</span>
-    </div>`:''}
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
-      <thead><tr>
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#888896;padding:8px 0;text-align:left;border-bottom:1px solid #2a2a30">Date</th>
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#888896;padding:8px 8px;text-align:left;border-bottom:1px solid #2a2a30">Description</th>
-        <th style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#888896;padding:8px 0;text-align:right;border-bottom:1px solid #2a2a30">Amount</th>
-        <th style="border-bottom:1px solid #2a2a30"></th>
-      </tr></thead>
-      <tbody>${txns.map(t=>{
-        const idx = APP.transactions.indexOf(t);
-        return `<tr style="border-bottom:1px solid #2a2a30">
-          <td style="padding:9px 0;font-family:var(--mono);font-size:11px;color:#888896;white-space:nowrap">${t.date}</td>
-          <td style="padding:9px 8px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.desc}</td>
-          <td style="padding:9px 0;font-family:var(--mono);color:var(--danger);text-align:right">${f$c(Math.abs(t.amount))}</td>
-          <td style="padding:9px 0;text-align:right">
-            <button onclick="closeDrill();openEditTxn(${idx})" style="background:transparent;border:1px solid #2a2a30;color:#888896;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px">Edit</button>
-          </td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
-  
-  var dm = document.getElementById('drill-modal');
-  dm.style.cssText = 'position:fixed;inset:0;background:#00000099;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-}
-function closeDrill(e) {
-  if (!e || e.target===document.getElementById('drill-modal')) document.getElementById('drill-modal').style.display='none';
+    html += '<div onclick="openDrill(\''+cat+'\')" style="margin-bottom:14px;cursor:pointer;padding:8px;border-radius:8px;transition:background .15s" onmouseover="this.style.background=\'#ffffff08\'" onmouseout="this.style.background=\'transparent\'">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">';
+    html += '<span style="font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px">';
+    html += '<span style="width:8px;height:8px;border-radius:50%;background:'+CAT_COLOR[cat]+';display:inline-block;flex-shrink:0"></span>';
+    html += cat;
+    html += '<span style="font-size:10px;color:var(--muted);font-family:var(--mono)">'+txnCount+'</span></span>';
+    html += '<span style="font-family:var(--mono);font-size:12px;">';
+    html += '<span style="color:'+(over?'var(--danger)':'var(--accent2)')+'">'+f$(actual)+'</span>';
+    if(target>0) html += '<span style="color:var(--muted)"> / '+f$(target)+'</span>';
+    if(over) html += '<span style="color:var(--danger);font-size:10px;margin-left:4px">+'+f$(actual-target)+'</span>';
+    html += '</span></div>';
+    html += '<div style="height:7px;background:var(--surface);border-radius:10px;overflow:hidden;border:1px solid var(--border);position:relative">';
+    if(target>0){
+      var tPct = Math.min(target/Math.max(actual,target)*100,100);
+      html += '<div style="position:absolute;top:0;bottom:0;left:'+tPct.toFixed(1)+'%;width:2px;background:var(--muted);opacity:.4;z-index:2"></div>';
+    }
+    html += '<div style="width:'+pct.toFixed(1)+'%;height:100%;background:'+barColor+';border-radius:10px;transition:width .6s cubic-bezier(.4,0,.2,1)"></div>';
+    html += '</div></div>';
+  });
+
+  body.innerHTML = html;
 }
 
-// ── TRANSACTION EDITOR ─────────────────────────────────────────────────────
-function buildCatOptions(selected) {
-  return CATEGORIES.map(c=>`<option value="${c}" ${c===selected?'selected':''}>${c}</option>`).join('');
+// ═══════════════════════════════════════════════════════════════
+// SUMMARY STATS
+// ═══════════════════════════════════════════════════════════════
+function renderSummaryStats(){
+  var txns = filteredTxns();
+  var income = txns.filter(function(t){ return t.amount>0&&t.category==='Income'; }).reduce(function(s,t){ return s+t.amount; },0);
+  var spend = txns.filter(function(t){ return t.amount<0; }).reduce(function(s,t){ return s+Math.abs(t.amount); },0);
+
+  // Update stat cards if they exist
+  var si = document.getElementById('s-income');
+  var ss = document.getElementById('s-spend');
+  var sn = document.getElementById('s-net');
+  if(si) si.textContent = f$(income);
+  if(ss) ss.textContent = f$(spend);
+  if(sn){
+    var net = income-spend;
+    sn.textContent = f$(net);
+    sn.style.color = net>=0?'var(--accent2)':'var(--danger)';
+  }
 }
-function openEditTxn(idx) {
-  APP.editingTxnIdx = idx;
-  const t = APP.transactions[idx];
+
+// ═══════════════════════════════════════════════════════════════
+// DRILL DOWN
+// ═══════════════════════════════════════════════════════════════
+function openDrill(cat){
+  var txns = filteredTxns().filter(function(t){ return t.category===cat&&t.amount<0; });
+  txns.sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var total = txns.reduce(function(s,t){ return s+Math.abs(t.amount); },0);
+  var target = DB.targets[cat]||0;
+  var over = target>0&&total>target;
+
+  document.getElementById('drill-title').textContent = cat+' · '+f$(total);
+
+  var html = '';
+  if(target>0){
+    html += '<div style="padding:12px 0;margin-bottom:4px;display:flex;gap:20px;font-family:var(--mono);font-size:12px;border-bottom:1px solid var(--border)">';
+    html += '<span>Actual: <strong style="color:'+(over?'var(--danger)':'var(--accent2)')+'">'+f$c(total)+'</strong></span>';
+    html += '<span style="color:var(--muted)">Target: '+f$c(target)+'</span>';
+    html += '<span style="color:'+(over?'var(--danger)':'var(--accent2)')+'">'+(over?'Over '+f$c(total-target):'Under '+f$c(target-total))+'</span>';
+    html += '</div>';
+  }
+
+  if(!txns.length){
+    html += '<div style="text-align:center;padding:32px;color:var(--muted);font-family:var(--mono);font-size:13px">No transactions</div>';
+  } else {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">';
+    html += '<thead><tr>';
+    ['Date','Description','Amount','Notes',''].forEach(function(h){
+      html += '<th style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:8px 0 8px '+(h===''?'0':'8px')+';text-align:'+(h==='Amount'?'right':'left');
+      if(h!=='') html += ';border-bottom:1px solid var(--border)';
+      html += '">'+(h==='Description'?'<span style="padding-left:0">'+h+'</span>':h)+'</th>';
+    });
+    html += '</tr></thead><tbody>';
+    txns.forEach(function(t){
+      var idx = DB.transactions.indexOf(t);
+      html += '<tr style="border-bottom:1px solid var(--border)">';
+      html += '<td style="padding:9px 8px;font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap">'+t.date+'</td>';
+      html += '<td style="padding:9px 8px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.desc+'</td>';
+      html += '<td style="padding:9px 8px;font-family:var(--mono);color:var(--danger);text-align:right">'+f$c(Math.abs(t.amount))+'</td>';
+      html += '<td style="padding:9px 8px;font-size:11px;color:var(--muted)">'+( t.notes||'')+'</td>';
+      html += '<td style="padding:9px 0;text-align:right"><button onclick="closeDrill();openEditTxn('+idx+')" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px;font-family:var(--sans)">Edit</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  document.getElementById('drill-body').innerHTML = html;
+  document.getElementById('drill-modal').style.display='flex';
+}
+function closeDrill(e){
+  if(!e||e.target===document.getElementById('drill-modal'))
+    document.getElementById('drill-modal').style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TRANSACTION EDITOR
+// ═══════════════════════════════════════════════════════════════
+function openEditTxn(idx){
+  DB.editingTxn = idx;
+  var t = DB.transactions[idx];
   document.getElementById('edit-date').value = t.date;
   document.getElementById('edit-desc').value = t.desc;
   document.getElementById('edit-amount').value = t.amount;
   document.getElementById('edit-notes').value = t.notes||'';
-  document.getElementById('edit-cat').innerHTML = buildCatOptions(t.category);
-  var tm = document.getElementById('txn-modal');
-  tm.style.cssText = 'position:fixed;inset:0;background:#00000099;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  var sel = document.getElementById('edit-cat');
+  sel.innerHTML = CATS.map(function(c){ return '<option value="'+c+'"'+(c===t.category?' selected':'')+'>'+c+'</option>'; }).join('');
+  document.getElementById('txn-modal').style.display='flex';
 }
-function closeTxnModal(e) {
-  if (!e || e.target===document.getElementById('txn-modal')) {
-    document.getElementById('txn-modal').style.display='none'; APP.editingTxnIdx=null;
+function closeTxnModal(e){
+  if(!e||e.target===document.getElementById('txn-modal')){
+    document.getElementById('txn-modal').style.display='none';
+    DB.editingTxn=null;
   }
 }
-function saveTxn() {
-  const i = APP.editingTxnIdx; if(i===null) return;
-  APP.transactions[i].desc = document.getElementById('edit-desc').value;
-  APP.transactions[i].amount = parseFloat(document.getElementById('edit-amount').value);
-  APP.transactions[i].category = document.getElementById('edit-cat').value;
-  APP.transactions[i].notes = document.getElementById('edit-notes').value;
-  saveState(); renderSpending(); closeTxnModal();
+function saveTxn(){
+  var i=DB.editingTxn; if(i===null||i===undefined) return;
+  DB.transactions[i].desc=document.getElementById('edit-desc').value;
+  DB.transactions[i].amount=parseFloat(document.getElementById('edit-amount').value)||0;
+  DB.transactions[i].category=document.getElementById('edit-cat').value;
+  DB.transactions[i].notes=document.getElementById('edit-notes').value;
+  dbSave(); renderAll(); closeTxnModal();
 }
-function deleteTxn() {
-  if(APP.editingTxnIdx===null||!confirm('Delete this transaction?')) return;
-  APP.transactions.splice(APP.editingTxnIdx,1);
-  saveState(); renderSpending(); closeTxnModal();
+function deleteTxn(){
+  var i=DB.editingTxn;
+  if(i===null||i===undefined) return;
+  if(!confirm('Delete this transaction?')) return;
+  DB.transactions.splice(i,1);
+  dbSave(); renderAll(); closeTxnModal();
   document.getElementById('drill-modal').style.display='none';
 }
 
-// ── BALANCE EDITOR ─────────────────────────────────────────────────────────
-const BAL_LABELS = {checking:'BofA Checking',savings:'BofA Savings',chase:'Chase Marriott Balance',sofi:'SoFi Loan Balance'};
-const BAL_IDS = {checking:'live-checking',savings:'live-savings',chase:'live-chase-bal',sofi:'live-sofi-bal'};
-
-function editBalance(key) {
-  APP.editingBalKey = key;
-  document.getElementById('bal-modal-title').textContent = `Update: ${BAL_LABELS[key]}`;
-  document.getElementById('bal-input').value = APP.balances[key];
-  var bm = document.getElementById('bal-modal');
-  bm.style.cssText = 'position:fixed;inset:0;background:#00000099;z-index:9999;display:flex;align-items:center;justify-content:center';
-  setTimeout(()=>document.getElementById('bal-input').select(),50);
+// ═══════════════════════════════════════════════════════════════
+// BALANCE EDITOR
+// ═══════════════════════════════════════════════════════════════
+var BAL_MAP = {
+  checking:{id:'live-checking',label:'BofA Checking'},
+  savings:{id:'live-savings',label:'BofA Savings'},
+  chase:{id:'live-chase-bal',label:'Chase Marriott Balance'},
+  sofi:{id:'live-sofi-bal',label:'SoFi Balance'}
+};
+function editBalance(key){
+  DB.editingBalKey=key;
+  document.getElementById('bal-modal-title').textContent='Update: '+BAL_MAP[key].label;
+  document.getElementById('bal-input').value=DB.balances[key]||0;
+  document.getElementById('bal-modal').style.display='flex';
+  setTimeout(function(){ document.getElementById('bal-input').select(); },50);
 }
-function saveBalance() {
-  const key = APP.editingBalKey; if(!key) return;
-  const val = parseFloat(document.getElementById('bal-input').value)||0;
-  APP.balances[key] = val;
-  const el = document.getElementById(BAL_IDS[key]);
-  if (el) el.textContent = '$'+val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  // Update combined liquid total
-  const liquid = APP.balances.checking + APP.balances.savings;
-  saveState();
+function saveBalance(){
+  var key=DB.editingBalKey; if(!key) return;
+  DB.balances[key]=parseFloat(document.getElementById('bal-input').value)||0;
+  var el=document.getElementById(BAL_MAP[key].id);
+  if(el) el.textContent='$'+DB.balances[key].toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  dbSave();
   document.getElementById('bal-modal').style.display='none';
 }
 
-// ── INIT ───────────────────────────────────────────────────────────────────
-try {
-  loadState();
-} catch(e) {
-  console.warn('loadState failed, resetting:', e);
-  APP.transactions = [];
-  APP.balances = { checking: 4533.50, savings: 718.47, chase: 13992.03, sofi: 29000.79 };
+// ═══════════════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════════════
+function renderAll(){
+  renderMonthFilter();
+  renderSpending();
+  renderSummaryStats();
+  renderDebt();
 }
-APP.editingTxnIdx = null;
-APP.editingBalKey = null;
 
-try { renderSpending(); } catch(e) { console.error('renderSpending failed:', e); }
+function renderDebt(){
+  var body=document.getElementById('debt-body');
+  if(!body) return;
+  var active=DB.debts.filter(function(d){ return d.status!=='paid'; });
+  var paid=DB.debts.filter(function(d){ return d.status==='paid'; });
+  var total=active.reduce(function(s,d){ return s+d.balance; },0);
 
-// Restore saved balances to DOM
-Object.entries(BAL_IDS).forEach(([key,id])=>{
-  try {
-    const el = document.getElementById(id);
-    if (el && APP.balances[key]!==undefined) {
-      el.textContent = '$'+APP.balances[key].toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  var html='<div style="display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">';
+  html+='<span style="font-size:13px;color:var(--muted)">Total remaining</span>';
+  html+='<span style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--danger)">'+f$c(total)+'</span></div>';
+
+  active.forEach(function(d){
+    var sc=d.status==='attack'?'var(--danger)':d.rate===0?'var(--accent2)':'var(--accent)';
+    html+='<div style="padding:10px 0;border-bottom:1px solid var(--border)">';
+    html+='<div style="display:flex;justify-content:space-between;margin-bottom:4px">';
+    html+='<span style="font-size:13px;font-weight:'+(d.status==='attack'?'600':'400')+'">'+d.name+'</span>';
+    html+='<span style="font-family:var(--mono);font-size:13px;color:'+(d.balance>5000?'var(--danger)':'var(--warn)')+'">'+f$c(d.balance)+'</span></div>';
+    html+='<div style="display:flex;gap:12px;font-family:var(--mono);font-size:11px;color:var(--muted)">';
+    html+='<span>APR: <span style="color:'+(d.rate>10?'var(--danger)':d.rate===0?'var(--accent2)':'var(--text)')+'">'+d.rate+'%</span></span>';
+    html+='<span>Paying: <span style="color:'+sc+'">'+f$c(d.monthly)+'/mo</span></span>';
+    html+='<span>'+d.note+'</span></div></div>';
+  });
+
+  if(paid.length){
+    html+='<div style="margin-top:12px"><div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Paid Off</div>';
+    paid.forEach(function(d){
+      html+='<div style="padding:6px 0;border-bottom:1px solid var(--border);opacity:.5;display:flex;justify-content:space-between">';
+      html+='<span style="font-size:13px;text-decoration:line-through;color:var(--muted)">'+d.name+'</span>';
+      html+='<span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$0 ✅</span></div>';
+    });
+    html+='</div>';
+  }
+  body.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FORMATTING
+// ═══════════════════════════════════════════════════════════════
+function f$(n){
+  var abs=Math.abs(n);
+  var s=abs.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+  return n<0?'('+s+')':s;
+}
+function f$c(n){
+  return Math.abs(n).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILE IMPORT
+// ═══════════════════════════════════════════════════════════════
+function openImport(){
+  var m=document.getElementById('import-modal');
+  if(m){ m.style.display='flex'; }
+  var log=document.getElementById('import-log');
+  if(log){ log.style.display='none'; log.textContent=''; }
+}
+function closeImport(){
+  var m=document.getElementById('import-modal');
+  if(m) m.style.display='none';
+}
+function doPickFile(){
+  var inp=document.createElement('input');
+  inp.type='file'; inp.accept='.csv,.CSV';
+  inp.style.cssText='position:fixed;top:-999px;left:-999px;width:1px;height:1px';
+  document.body.appendChild(inp);
+  inp.onchange=function(){
+    var f=inp.files&&inp.files[0];
+    if(f){
+      var r=new FileReader();
+      r.onload=function(ev){ processCSV(ev.target.result, f.name); };
+      r.onerror=function(){ var l=document.getElementById('import-log'); if(l){ l.style.display='block'; l.textContent='Read error'; } };
+      r.readAsText(f);
     }
-  } catch(e) {}
-});
-
-if (APP.transactions.length) {
-  document.getElementById('last-updated').textContent = APP.transactions.length + ' transactions loaded';
+    setTimeout(function(){ if(inp.parentNode) inp.parentNode.removeChild(inp); },200);
+  };
+  setTimeout(function(){ inp.click(); },50);
 }
 
-console.log('BudgetHub init complete. Transactions:', APP.transactions.length);
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+(function init(){
+  try{ dbLoad(); } catch(e){ console.warn('dbLoad failed',e); }
+  DB.editingTxn=null; DB.editingBalKey=null;
 
-// ── FILE PICKER ────────────────────────────────────────────────────────────
-function doPickFile() {
-  try {
-    var inp = document.createElement('input');
-    inp.type = 'file';
-    inp.accept = '.csv';
-    inp.style.cssText = 'position:fixed;top:-500px;left:-500px;width:1px;height:1px';
-    document.body.appendChild(inp);
-    inp.onchange = function() {
-      var f = inp.files && inp.files[0];
-      console.log('File selected:', f ? f.name : 'none');
-      if (f) {
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-          try { processCSV(ev.target.result, f.name); }
-          catch(err) { console.error('processCSV error:', err); }
-        };
-        reader.readAsText(f);
+  // Restore balance displays
+  Object.keys(BAL_MAP).forEach(function(key){
+    var el=document.getElementById(BAL_MAP[key].id);
+    if(el&&DB.balances[key]!==undefined){
+      el.textContent='$'+DB.balances[key].toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+  });
+
+  // Wire import button
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(!t) return;
+    if(t.id==='import-btn'||t.closest&&t.closest('#import-btn')){ e.stopPropagation(); openImport(); }
+    if(t.id==='pick-file-btn'){ e.stopPropagation(); doPickFile(); }
+  });
+
+  // Wire drag-drop on the drop zone
+  document.addEventListener('dragover',function(e){
+    var z=e.target&&(e.target.id==='drop-zone'||(e.target.closest&&e.target.closest('#drop-zone')));
+    if(z){ e.preventDefault(); }
+  });
+  document.addEventListener('drop',function(e){
+    var z=e.target&&(e.target.id==='drop-zone'||(e.target.closest&&e.target.closest('#drop-zone')));
+    if(z){
+      e.preventDefault();
+      var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+      if(f){
+        var r=new FileReader();
+        r.onload=function(ev){ processCSV(ev.target.result, f.name); };
+        r.readAsText(f);
       }
-      setTimeout(function() { if (inp.parentNode) inp.parentNode.removeChild(inp); }, 100);
-    };
-    inp.click();
-    console.log('File input clicked');
-  } catch(err) {
-    console.error('doPickFile error:', err);
-  }
-}
+    }
+  });
 
-document.addEventListener('click', function(e) {
-  if (!e.target) return;
-  if (e.target.id === 'pick-file-btn') {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Choose File clicked');
-    doPickFile();
+  if(DB.transactions.length){
+    document.getElementById('last-updated').textContent=DB.transactions.length+' transactions loaded';
   }
-});
 
-document.addEventListener('dragover', function(e) {
-  if (e.target && (e.target.id === 'drop-zone' || e.target.closest && e.target.closest('#drop-zone'))) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-});
-
-document.addEventListener('drop', function(e) {
-  var zone = e.target && (e.target.id === 'drop-zone' || (e.target.closest && e.target.closest('#drop-zone')));
-  if (zone) {
-    e.preventDefault();
-    e.stopPropagation();
-    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    console.log('File dropped:', f ? f.name : 'none');
-    if (f) {
-      var reader = new FileReader();
-      reader.onload = function(ev) {
-        try { processCSV(ev.target.result, f.name); }
-        catch(err) { console.error('processCSV drop error:', err); }
-      };
-      reader.readAsText(f);
+  // Add month filter container to spending card if not present
+  var spendBody=document.getElementById('live-spending-body');
+  if(spendBody){
+    var existing=document.getElementById('month-filter-wrap');
+    if(!existing){
+      var wrap=document.createElement('div');
+      wrap.id='month-filter-wrap';
+      spendBody.parentNode.insertBefore(wrap, spendBody);
     }
   }
-});
+
+  // Add month-btn styles
+  var style=document.createElement('style');
+  style.textContent='.month-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:4px 12px;font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .15s}.month-btn:hover{border-color:var(--accent);color:var(--text)}.month-btn-active{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important}';
+  document.head.appendChild(style);
+
+  try{ renderAll(); } catch(e){ console.error('renderAll failed',e); }
+  console.log('BudgetHub v4 ready. Transactions:',DB.transactions.length);
+})();
+
 </script>
 
 </body>
