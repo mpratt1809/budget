@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BizHub — Meagan Pratt</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0f0f11;
+  --surface: #17171a;
+  --card:    #1e1e22;
+  --border:  #2a2a30;
+  --accent:  #7c6af7;
+  --accent2: #4fc38a;
+  --warn:    #f0a048;
+  --danger:  #e05555;
+  --text:    #e8e8ec;
+  --muted:   #888896;
+  --mono:    'DM Mono', monospace;
+  --sans:    'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  padding: 0 0 80px;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); }
+.header-nav { display: flex; gap: 6px; align-items: center; }
+.nav-pill {
+  font-family: var(--mono); font-size: 11px; padding: 5px 12px;
+  border-radius: 20px; border: 1px solid var(--border);
+  color: var(--muted); text-decoration: none; cursor: pointer;
+  transition: all 0.15s; background: transparent;
+}
+.nav-pill:hover { border-color: var(--accent); color: var(--text); }
+.nav-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.header-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); text-align: right; }
+.header-meta span { color: var(--accent2); }
+
+/* ── PAGE ── */
+.page { max-width: 900px; margin: 0 auto; padding: 32px 20px; animation: fadeIn 0.4s ease; }
+.page-title { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px; }
+.page-sub { font-size: 13px; color: var(--muted); font-family: var(--mono); margin-bottom: 32px; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── PANELS ── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  margin: 28px 0 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── STAT CARDS ── */
+.summary-strip { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 28px; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; transition: border-color 0.2s; }
+.stat-card:hover { border-color: var(--accent); }
+.stat-label { font-size: 10px; font-family: var(--mono); letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.stat-value { font-size: 22px; font-weight: 700; font-family: var(--mono); letter-spacing: -1px; }
+.stat-value.green  { color: var(--accent2); }
+.stat-value.purple { color: var(--accent); }
+.stat-value.warn   { color: var(--warn); }
+.stat-value.red    { color: var(--danger); }
+.stat-sub { font-size: 10px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+
+/* ── GRID ── */
+.grid { display: grid; gap: 16px; }
+.grid-2 { grid-template-columns: 1fr 1fr; }
+.grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.grid-1 { grid-template-columns: 1fr; }
+
+/* ── CARD ── */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; transition: border-color 0.2s; }
+.card:hover { border-color: #3a3a44; }
+.card-header { padding: 16px 20px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.card-title { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
+.card-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.card-badge { font-family: var(--mono); font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); }
+.badge-green  { color: var(--accent2); border-color: #4fc38a33; background: #4fc38a10; }
+.badge-purple { color: var(--accent); border-color: #7c6af733; background: #7c6af710; }
+.badge-warn   { color: var(--warn); border-color: #f0a04833; background: #f0a04810; }
+.badge-red    { color: var(--danger); border-color: #e0555533; background: #e0555510; }
+.badge-muted  { color: var(--muted); }
+.card-body { padding: 16px 20px 20px; }
+
+/* ── ROW ITEMS ── */
+.row-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.row-item:last-child { border-bottom: none; padding-bottom: 0; }
+.row-label { color: var(--text); display: flex; align-items: center; gap: 8px; }
+.row-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); display: block; margin-top: 2px; }
+.row-amt { font-family: var(--mono); font-size: 13px; font-weight: 500; text-align: right; flex-shrink: 0; }
+.row-amt.green  { color: var(--accent2); }
+.row-amt.purple { color: var(--accent); }
+.row-amt.warn   { color: var(--warn); }
+.row-amt.muted  { color: var(--muted); }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot-green  { background: var(--accent2); }
+.dot-purple { background: var(--accent); }
+.dot-warn   { background: var(--warn); }
+.dot-red    { background: var(--danger); }
+.dot-muted  { background: var(--muted); }
+
+/* ── PROGRESS ── */
+.progress-wrap { margin: 8px 0; }
+.progress-label { display: flex; justify-content: space-between; font-size: 11px; font-family: var(--mono); color: var(--muted); margin-bottom: 5px; }
+.progress-track { height: 6px; background: var(--surface); border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+.progress-fill { height: 100%; border-radius: 10px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+.fill-green  { background: linear-gradient(90deg, var(--accent2), #82e0b0); }
+.fill-purple { background: linear-gradient(90deg, var(--accent), #a08af7); }
+.fill-warn   { background: linear-gradient(90deg, var(--warn), #f0c070); }
+
+/* ── NOTES ── */
+.note { font-size: 11px; color: var(--muted); font-family: var(--mono); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-top: 12px; line-height: 1.5; }
+.note.green  { border-color: #4fc38a33; color: var(--accent2); background: #4fc38a08; }
+.note.purple { border-color: #7c6af733; color: var(--accent); background: #7c6af708; }
+.note.warn   { border-color: #f0a04833; color: var(--warn); background: #f0a04808; }
+
+/* ── BUTTONS ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.btn:hover { border-color: #3a3a44; background: var(--card); }
+.btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-accent:hover { background: #8f7ef8; border-color: #8f7ef8; }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+.btn-ghost { background: none; border-color: transparent; color: var(--muted); }
+.btn-ghost:hover { color: var(--text); background: var(--surface); border-color: var(--border); }
+.btn-danger { border-color: #e0555533; color: var(--danger); background: #e0555508; }
+.btn-danger:hover { background: #e0555515; }
+
+/* ── TABS (panel nav) ── */
+.tab-strip { display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap; }
+.tab-btn { font-family: var(--mono); font-size: 11px; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+.tab-btn:hover { border-color: var(--accent); color: var(--text); }
+.tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── MODAL ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--card); border: 1px solid #3a3a44; border-radius: 16px; padding: 28px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+/* ── FORM ── */
+.form-row { margin-bottom: 14px; }
+.form-row label { display: block; font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+input, select, textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: var(--sans); font-size: 13px; padding: 9px 12px; outline: none; transition: border-color 0.15s; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+textarea { height: 72px; resize: vertical; }
+select { appearance: none; cursor: pointer; }
+input[type=range] { padding: 0; background: none; border: none; }
+
+/* ── TABLE ── */
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; padding: 0 14px 10px; border-bottom: 1px solid var(--border); }
+td { padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.015); }
+.td-muted { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+
+/* ── BADGE INLINE ── */
+.tag { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border); }
+.tag-green  { color: var(--accent2); border-color: #4fc38a33; background: #4fc38a10; }
+.tag-purple { color: var(--accent); border-color: #7c6af733; background: #7c6af710; }
+.tag-warn   { color: var(--warn); border-color: #f0a04833; background: #f0a04810; }
+.tag-red    { color: var(--danger); border-color: #e0555533; background: #e0555510; }
+.tag-muted  { color: var(--muted); background: var(--surface); }
+
+/* ── TO-DO ── */
+.action-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.action-item:last-child { border-bottom: none; }
+.action-check { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid var(--border); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 11px; cursor: pointer; }
+.action-item.done .action-check { background: var(--accent2); border-color: var(--accent2); color: #0f0f11; }
+.action-item.done .action-text { text-decoration: line-through; color: var(--muted); }
+.action-text { font-size: 13px; flex: 1; line-height: 1.4; }
+.action-tag { font-size: 10px; font-family: var(--mono); padding: 2px 8px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); flex-shrink: 0; margin-top: 1px; white-space: nowrap; }
+.tag-high { color: var(--danger); border-color: #e0555533; background: #e0555510; }
+.tag-normal { color: var(--accent); border-color: #7c6af733; background: #7c6af710; }
+.tag-low { color: var(--muted); background: var(--surface); }
+
+/* ── TIMER ── */
+.timer-bar { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; }
+.timer-display { font-family: var(--mono); font-size: 30px; font-weight: 300; color: var(--accent2); min-width: 110px; }
+.timer-display.running { color: var(--accent2); }
+
+/* ── PAYMENT CARDS ── */
+.pay-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-bottom: 14px; transition: border-color 0.2s; }
+.pay-card:hover { border-color: #3a3a44; }
+.pay-card.recommended { border-color: #7c6af733; }
+.pay-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.pay-name { font-size: 15px; font-weight: 600; }
+.pay-cost { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.pay-desc { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+.pay-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pay-tag { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); font-family: var(--mono); }
+.pay-link { display: inline-block; margin-top: 12px; font-family: var(--mono); font-size: 11px; color: var(--accent); text-decoration: none; }
+.pay-link:hover { text-decoration: underline; }
+
+/* ── EMPTY ── */
+.empty-state { text-align: center; padding: 36px 20px; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+
+/* ── INVOICE ── */
+.inv-line { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.inv-line:last-child { border-bottom: none; }
+.inv-total { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--accent2); }
+
+/* ── DELIVERABLE ── */
+.deliv-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.deliv-item:last-child { border-bottom: none; }
+
+/* ── TIER CARD ── */
+.tier-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+.tier-num { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+.tier-name { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.tier-price { font-family: var(--mono); font-size: 24px; font-weight: 300; color: var(--accent2); }
+.tier-cadence { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.tier-features { border-top: 1px solid var(--border); padding-top: 14px; }
+.tier-feat { font-size: 13px; color: var(--muted); padding: 4px 0; display: flex; gap: 8px; }
+.tier-feat::before { content: '—'; color: var(--accent); }
+
+@media (max-width: 640px) {
+  .summary-strip { grid-template-columns: repeat(2,1fr); }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .timer-bar { flex-wrap: wrap; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BizHub</div>
+  <div class="header-nav">
+    <a class="nav-pill" href="index.html">💰 FinanceHub</a>
+    <span class="nav-pill active">💼 BizHub</span>
+  </div>
+  <div class="header-meta">MEAGAN E. PRATT &nbsp;·&nbsp; <span id="hdr-date">2026</span></div>
+</header>
+
+<div class="page">
+  <div class="page-title">💼 Your Business</div>
+  <div class="page-sub">AI consulting hub · projects, time, leads & payments</div>
+
+  <!-- TAB STRIP -->
+  <div class="tab-strip">
+    <button class="tab-btn active" onclick="showTab('overview',this)">Overview</button>
+    <button class="tab-btn" onclick="showTab('project',this)">Active project</button>
+    <button class="tab-btn" onclick="showTab('time',this)">Time log</button>
+    <button class="tab-btn" onclick="showTab('todos',this)">To-dos</button>
+    <button class="tab-btn" onclick="showTab('leads',this)">Leads</button>
+    <button class="tab-btn" onclick="showTab('tiers',this)">Tiers & pricing</button>
+    <button class="tab-btn" onclick="showTab('pipeline',this)">Content pipeline</button>
+    <button class="tab-btn" onclick="showTab('payments',this)">Payments guide</button>
+  </div>
+
+  <!-- ══════════ OVERVIEW ══════════ -->
+  <div id="tab-overview" class="panel active">
+    <div class="summary-strip">
+      <div class="stat-card"><div class="stat-label">Hours logged</div><div class="stat-value green" id="ov-hrs">0.0</div><div class="stat-sub" id="ov-proj-name">No project yet</div></div>
+      <div class="stat-card"><div class="stat-label">Open tasks</div><div class="stat-value purple" id="ov-tasks">0</div><div class="stat-sub">to-dos remaining</div></div>
+      <div class="stat-card"><div class="stat-label">Pipeline leads</div><div class="stat-value warn" id="ov-leads">0</div><div class="stat-sub">prospects tracked</div></div>
+      <div class="stat-card"><div class="stat-label">Project progress</div><div class="stat-value" id="ov-pct" style="color:var(--text)">0%</div><div class="stat-sub" id="ov-status">—</div></div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title"><div class="card-icon" style="background:#7c6af715">📁</div>Active project</div></div>
+        <div class="card-body">
+          <div class="row-item"><span style="color:var(--muted);font-size:12px">Client</span><span id="ov-client" style="font-weight:600">Client TBD</span></div>
+          <div class="row-item"><span style="color:var(--muted);font-size:12px">Service</span><span id="ov-service" style="font-family:var(--mono);font-size:12px">—</span></div>
+          <div class="row-item"><span style="color:var(--muted);font-size:12px">Value</span><span id="ov-value" class="row-amt green">$0</span></div>
+          <div class="progress-wrap" style="margin-top:12px">
+            <div class="progress-label"><span id="ov-prog-label">Progress</span><span id="ov-prog-pct">0%</span></div>
+            <div class="progress-track"><div class="progress-fill fill-purple" id="ov-prog-bar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><div class="card-icon" style="background:#4fc38a15">✓</div>Open to-dos</div></div>
+        <div class="card-body" id="ov-todo-list"><div class="empty-state" style="padding:16px">No open tasks.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PROJECT ══════════ -->
+  <div id="tab-project" class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-size:16px;font-weight:600" id="proj-headline">Active project</div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('modal-project')">Edit project</button>
+    </div>
+    <div class="grid grid-3" style="margin-bottom:16px">
+      <div class="stat-card"><div class="stat-label">Client</div><div class="stat-value" style="font-size:18px" id="p-client">Client TBD</div></div>
+      <div class="stat-card"><div class="stat-label">Service tier</div><div class="stat-value" style="font-size:16px;color:var(--accent)" id="p-service">—</div></div>
+      <div class="stat-card"><div class="stat-label">Project value</div><div class="stat-value green" id="p-value">$0</div></div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Status & progress</div></div>
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+            <div><div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--mono)">STATUS</div><div id="p-status-badge"><span class="tag tag-purple">Discovery</span></div></div>
+            <div style="text-align:right"><div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--mono)">DUE DATE</div><div id="p-due" style="font-family:var(--mono);font-size:12px;color:var(--muted)">—</div></div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Progress</span><span id="p-pct-lbl">0%</span></div>
+            <div class="progress-track"><div class="progress-fill fill-purple" id="p-bar" style="width:0%"></div></div>
+          </div>
+          <input type="range" min="0" max="100" value="0" id="p-slider" style="width:100%;margin-top:10px" oninput="updateProgress(this.value)">
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Notes</div></div>
+        <div class="card-body">
+          <textarea id="p-notes" style="height:130px;background:transparent;border:none;padding:0;font-size:13px;color:var(--muted);resize:none;width:100%" placeholder="Scope, client details, access info..." oninput="S.project.notes=this.value;save()"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-header"><div class="card-title"><div class="card-icon" style="background:#7c6af715">📦</div>Deliverables</div><button class="btn btn-sm" onclick="openModal('modal-deliv')">+ Add</button></div>
+      <div class="card-body" id="deliv-list"><div class="empty-state">No deliverables yet.</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ TIME LOG ══════════ -->
+  <div id="tab-time" class="panel">
+    <div class="timer-bar">
+      <div class="timer-display" id="timer-disp">00:00:00</div>
+      <input id="timer-note" type="text" placeholder="What are you working on?" style="flex:1;max-width:260px">
+      <button class="btn btn-accent" id="timer-btn" onclick="toggleTimer()">▶ Start</button>
+      <button class="btn" onclick="openModal('modal-manual-log')">Log manually</button>
+    </div>
+    <div class="summary-strip" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-label">Total hours</div><div class="stat-value green" id="tl-total">0.0</div><div class="stat-sub">hrs logged</div></div>
+      <div class="stat-card"><div class="stat-label">Sessions</div><div class="stat-value purple" id="tl-sessions">0</div></div>
+      <div class="stat-card"><div class="stat-label">Avg session</div><div class="stat-value warn" id="tl-avg">0.0</div><div class="stat-sub">hrs</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Session history</div></div>
+      <div class="card-body" id="time-list"><div class="empty-state">No time logged yet.</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════ TO-DOS ══════════ -->
+  <div id="tab-todos" class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="display:flex;gap:6px">
+        <button class="tab-btn active" onclick="filterTodos('all',this)" id="tf-all">All</button>
+        <button class="tab-btn" onclick="filterTodos('open',this)" id="tf-open">Open</button>
+        <button class="tab-btn" onclick="filterTodos('done',this)" id="tf-done">Done</button>
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('modal-todo')">+ Add task</button>
+    </div>
+    <div class="summary-strip" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-label">Open</div><div class="stat-value purple" id="td-open">0</div></div>
+      <div class="stat-card"><div class="stat-label">Done</div><div class="stat-value green" id="td-done">0</div></div>
+      <div class="stat-card"><div class="stat-label">Completion</div><div class="stat-value" id="td-pct" style="color:var(--text)">—</div></div>
+    </div>
+    <div class="card"><div class="card-body" id="todo-list"><div class="empty-state">No tasks yet.</div></div></div>
+  </div>
+
+  <!-- ══════════ LEADS ══════════ -->
+  <div id="tab-leads" class="panel">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-accent btn-sm" onclick="openModal('modal-lead')">+ Add lead</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Name / company</th><th>Type</th><th>Source</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody id="leads-body"></tbody>
+      </table>
+      <div id="leads-empty" class="empty-state">No leads yet. Add your first prospect.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ TIERS ══════════ -->
+  <div id="tab-tiers" class="panel">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-accent btn-sm" onclick="openModal('modal-tier')">+ Add tier</button>
+    </div>
+    <div class="grid grid-3" id="tiers-grid"></div>
+  </div>
+
+  <!-- ══════════ PIPELINE ══════════ -->
+  <div id="tab-pipeline" class="panel">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="btn btn-accent btn-sm" onclick="openModal('modal-pipeline')">+ Add item</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Item</th><th>Type</th><th>Stage</th><th>Target date</th><th>Notes</th></tr></thead>
+        <tbody id="pipeline-body"></tbody>
+      </table>
+      <div id="pipeline-empty" class="empty-state">No pipeline items yet.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ PAYMENTS GUIDE ══════════ -->
+  <div id="tab-payments" class="panel">
+    <div class="note purple" style="margin-bottom:24px;font-size:12px">
+      ★ Recommended stack: <strong>Stripe</strong> for client invoices & retainers · <strong>Gumroad</strong> or <strong>Lemon Squeezy</strong> for digital products. Three tools, all three revenue models covered.
+    </div>
+
+    <div class="section-label">One-time project invoices</div>
+
+    <div class="pay-card recommended">
+      <div class="pay-top"><div class="pay-name">Stripe <span class="tag tag-purple" style="margin-left:8px;font-size:10px">Recommended</span></div><div class="pay-cost">2.9% + 30¢ per transaction</div></div>
+      <div class="pay-desc">The gold standard for freelancers. Send professional invoices from the Stripe dashboard — clients pay by card or bank transfer. Also handles recurring billing for retainers. No monthly fee.</div>
+      <div class="pay-tags"><span class="pay-tag">Professional invoices</span><span class="pay-tag">ACH bank transfer (0.8%)</span><span class="pay-tag">Instant payouts</span><span class="pay-tag">Tax-ready reporting</span></div>
+      <a class="pay-link" href="https://stripe.com" target="_blank">stripe.com →</a>
+    </div>
+
+    <div class="pay-card">
+      <div class="pay-top"><div class="pay-name">Wave <span class="tag tag-green" style="margin-left:8px;font-size:10px">Free</span></div><div class="pay-cost">Free invoicing · 2.9% + 60¢ if paid by card</div></div>
+      <div class="pay-desc">Free invoicing with built-in accounting. Good if you want bookkeeping bundled in at zero cost. Slightly clunkier than Stripe but solid for early stage.</div>
+      <div class="pay-tags"><span class="pay-tag">Free invoicing</span><span class="pay-tag">Accounting built in</span><span class="pay-tag">Zero monthly cost</span></div>
+      <a class="pay-link" href="https://waveapps.com" target="_blank">waveapps.com →</a>
+    </div>
+
+    <div class="pay-card">
+      <div class="pay-top"><div class="pay-name">HoneyBook</div><div class="pay-cost">$19–$79/mo</div></div>
+      <div class="pay-desc">All-in-one CRM + invoicing + contracts for freelancers. Worth it once you have multiple active clients — includes proposal templates, automated reminders, and a client portal.</div>
+      <div class="pay-tags"><span class="pay-tag">Contracts + invoices</span><span class="pay-tag">Client portal</span><span class="pay-tag">Automated reminders</span></div>
+      <a class="pay-link" href="https://www.honeybook.com" target="_blank">honeybook.com →</a>
+    </div>
+
+    <div class="section-label">Recurring retainers</div>
+
+    <div class="pay-card recommended">
+      <div class="pay-top"><div class="pay-name">Stripe Billing <span class="tag tag-purple" style="margin-left:8px;font-size:10px">Recommended</span></div><div class="pay-cost">2.9% + 30¢ per charge</div></div>
+      <div class="pay-desc">Same Stripe account, just activate Subscriptions. Set a recurring plan, send a link — client enters payment once and gets auto-charged monthly. Easy to pause, cancel, or adjust.</div>
+      <div class="pay-tags"><span class="pay-tag">Auto-recurring</span><span class="pay-tag">Client self-manages</span><span class="pay-tag">Proration support</span></div>
+      <a class="pay-link" href="https://stripe.com/billing" target="_blank">stripe.com/billing →</a>
+    </div>
+
+    <div class="pay-card">
+      <div class="pay-top"><div class="pay-name">Dubsado</div><div class="pay-cost">$20/mo or $200/yr</div></div>
+      <div class="pay-desc">Strong HoneyBook alternative with better workflow automation. Forms, contracts, automated client emails, and recurring payment plans built in.</div>
+      <div class="pay-tags"><span class="pay-tag">Workflow automation</span><span class="pay-tag">Contract templates</span><span class="pay-tag">Client portal</span></div>
+      <a class="pay-link" href="https://www.dubsado.com" target="_blank">dubsado.com →</a>
+    </div>
+
+    <div class="section-label">Digital products & templates</div>
+
+    <div class="pay-card recommended">
+      <div class="pay-top"><div class="pay-name">Gumroad <span class="tag tag-purple" style="margin-left:8px;font-size:10px">Recommended</span></div><div class="pay-cost">10% flat per sale</div></div>
+      <div class="pay-desc">Easiest way to sell digital products — upload a PDF, template pack, or tool and share a link. No storefront setup. Higher fee but zero upfront cost and handles tax automatically.</div>
+      <div class="pay-tags"><span class="pay-tag">No setup cost</span><span class="pay-tag">Instant storefront</span><span class="pay-tag">Tax handled</span><span class="pay-tag">Pay-what-you-want pricing</span></div>
+      <a class="pay-link" href="https://gumroad.com" target="_blank">gumroad.com →</a>
+    </div>
+
+    <div class="pay-card">
+      <div class="pay-top"><div class="pay-name">Lemon Squeezy</div><div class="pay-cost">~5% + 50¢ per sale</div></div>
+      <div class="pay-desc">Lower fees than Gumroad at volume. Handles VAT/global tax, subscriptions, and license keys. A step up in professionalism — great for international or recurring digital products.</div>
+      <div class="pay-tags"><span class="pay-tag">Lower fees at scale</span><span class="pay-tag">Subscriptions</span><span class="pay-tag">Global tax compliant</span><span class="pay-tag">License keys</span></div>
+      <a class="pay-link" href="https://www.lemonsqueezy.com" target="_blank">lemonsqueezy.com →</a>
+    </div>
+
+    <div class="pay-card">
+      <div class="pay-top"><div class="pay-name">Payhip</div><div class="pay-cost">5% free plan · 2% / 0% on paid plans</div></div>
+      <div class="pay-desc">Simple storefront for downloads, courses, and memberships. Free plan with just 5% fee. Good middle ground between Gumroad simplicity and Lemon Squeezy power.</div>
+      <div class="pay-tags"><span class="pay-tag">Free plan</span><span class="pay-tag">Courses + memberships</span><span class="pay-tag">Affiliate program</span></div>
+      <a class="pay-link" href="https://payhip.com" target="_blank">payhip.com →</a>
+    </div>
+
+    <div class="section-label">Quick invoice estimator</div>
+    <div class="card">
+      <div class="card-body">
+        <div id="inv-lines"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input id="inv-item" type="text" placeholder="Line item (e.g. AI Setup & Implementation)" style="flex:1">
+          <input id="inv-amt" type="number" placeholder="Amount $" style="width:110px">
+          <button class="btn" onclick="addInvLine()">Add</button>
+        </div>
+        <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:14px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Total</span>
+          <span class="inv-total" id="inv-total">$0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ══ MODALS ══ -->
+
+<div class="modal-overlay" id="modal-project">
+  <div class="modal">
+    <div class="modal-title">Edit project</div>
+    <div class="form-row"><label>Client name</label><input id="mp-client" type="text" placeholder="Client TBD"></div>
+    <div class="form-row"><label>Service</label><select id="mp-service"><option>AI Starter Setup</option><option>Done-for-You Implementation</option><option>Monthly Retainer</option><option>Custom</option></select></div>
+    <div class="form-row"><label>Project value ($)</label><input id="mp-value" type="number" placeholder="1500"></div>
+    <div class="form-row"><label>Status</label><select id="mp-status"><option>Discovery</option><option>In progress</option><option>Review</option><option>Complete</option></select></div>
+    <div class="form-row"><label>Due date</label><input id="mp-due" type="date"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('modal-project')">Cancel</button><button class="btn btn-accent" onclick="saveProject()">Save</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-deliv">
+  <div class="modal">
+    <div class="modal-title">Add deliverable</div>
+    <div class="form-row"><label>Deliverable</label><input id="md-name" type="text" placeholder="e.g. ChatGPT workflow setup"></div>
+    <div class="form-row"><label>Status</label><select id="md-status"><option>Not started</option><option>In progress</option><option>Done</option></select></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('modal-deliv')">Cancel</button><button class="btn btn-accent" onclick="addDeliv()">Add</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-manual-log">
+  <div class="modal">
+    <div class="modal-title">Log time manually</div>
+    <div class="form-row"><label>Hours</label><input id="ml-hrs" type="number" placeholder="1.5" step="0.25"></div>
+    <div class="form-row"><label>Date</label><input id="ml-date" type="date"></div>
+    <div class="form-row"><label>Notes</label><input id="ml-note" type="text" placeholder="What did you work on?"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('modal-manual-log')">Cancel</button><button class="btn btn-accent" onclick="logManual()">Log</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-todo">
+  <div class="modal">
+    <div class="modal-title">Add task</div>
+    <div class="form-row"><label>Task</label><input id="mt-task" type="text" placeholder="e.g. Send onboarding questionnaire"></div>
+    <div class="form-row"><label>Priority</label><select id="mt-priority"><option>Normal</option><option>High</option><option>Low</option></select></div>
+    <div class="form-row"><label>Due date (optional)</label><input id="mt-due" type="date"></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('modal-todo')">Cancel</button><button class="btn btn-accent" onclick="addTodo()">Add task</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-lead">
+  <div class="modal">
+    <div class="modal-title">Add lead</div>
+    <div class="form-row"><label>Name / company</label><input id="ml-name" type="text" placeholder="Jane Smith / Acme Co."></div>
+    <div class="form-row"><label>Type</label><select id="ml-type"><option>Individual</option><option>Small business</option><option>Corporate team</option></select></div>
+    <div class="form-row"><label>Source</label><select id="ml-source"><option>Referral</option><option>LinkedIn</option><option>Website</option><option>Cold outreach</option><option>Other</option></select></div>
+    <div class="form-row"><label>Status</label><select id="ml-status"><option>New</option><option>Contacted</option><option>Proposal sent</option><option>Negotiating</option><option>Closed won</option><option>Closed lost</option></select></div>
+    <div class="form-row"><label>Notes</label><textarea id="ml-notes" placeholder="What are they looking for?"></textarea></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('modal-lead')">Cancel</button><button class="btn btn-accent" onclick="addLead()">Add</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-tier">
+  <div class="modal">
+    <div class="modal-title">Add service tier</div>
+    <div class="form-row"><label>Tier name</label><input id="mti-name" type="text" placeholder="e.g. AI Starter Setup"></div>
+    <div class="form-row"><label>Price</label><input id="mti-price" type="text" placeholder="e.g. $500"></div>
+    <div class="form-row"><label>Cadence</label><select id="mti-cadence"><option>one-time</option><option>/ month</option><option>per project</option><option>/ year</option></select></div>
+    <div class="form-row"><label>Features (one per line)</label><textarea id="mti-features" placeholder="Tool audit&#10;Setup guide&#10;Email support"></textarea></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('modal-tier')">Cancel</button><button class="btn btn-accent" onclick="addTier()">Add tier</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-pipeline">
+  <div class="modal">
+    <div class="modal-title">Add pipeline item</div>
+    <div class="form-row"><label>Item name</label><input id="mpi-name" type="text" placeholder="e.g. ChatGPT for Small Biz template pack"></div>
+    <div class="form-row"><label>Type</label><select id="mpi-type"><option>Template / tool</option><option>Blog post</option><option>Social content</option><option>Video / course</option><option>Digital product</option><option>Other</option></select></div>
+    <div class="form-row"><label>Stage</label><select id="mpi-stage"><option>Idea</option><option>Drafting</option><option>Review</option><option>Ready to publish</option><option>Live</option></select></div>
+    <div class="form-row"><label>Target date</label><input id="mpi-date" type="date"></div>
+    <div class="form-row"><label>Notes</label><textarea id="mpi-notes" placeholder="Platform, format, audience..."></textarea></div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('modal-pipeline')">Cancel</button><button class="btn btn-accent" onclick="addPipeline()">Add</button></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE + PERSISTENCE
+// ══════════════════════════════════════════════
+var STORE_KEY = 'bizhub_v1';
+var S = {
+  project: { client:'Client TBD', service:'Done-for-You Implementation', value:0, status:'Discovery', due:'', progress:0, notes:'' },
+  deliverables: [],
+  todos: [],
+  timeLog: [],
+  leads: [],
+  tiers: [
+    { name:'AI Starter Setup', price:'$500', cadence:'one-time', features:['AI tool audit & recommendations','Setup of 2–3 core tools','1-hour walkthrough session'] },
+    { name:'Done-for-You Implementation', price:'$1,500', cadence:'per project', features:['Full workflow build & automation','Custom prompts & templates delivered','2-week async support'] },
+    { name:'Monthly Retainer', price:'$800', cadence:'/ month', features:['Ongoing AI strategy & implementation','Monthly 1:1 check-in','Priority async support'] }
+  ],
+  pipeline: [],
+  invoiceLines: []
+};
+
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(S)); }catch(e){} }
+function load(){ try{ var d=localStorage.getItem(STORE_KEY); if(d){ var p=JSON.parse(d); Object.keys(p).forEach(function(k){ S[k]=p[k]; }); } }catch(e){} }
+
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function showTab(id, btn){
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('tab-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='overview') renderOverview();
+  if(id==='tiers') renderTiers();
+}
+
+// ══════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(function(m){
+  m.addEventListener('click', function(e){ if(e.target===m) m.classList.remove('open'); });
+});
+
+// ══════════════════════════════════════════════
+// STATUS TAG HELPER
+// ══════════════════════════════════════════════
+function tagFor(s){
+  var map = {
+    Discovery:'purple','In progress':'warn',Review:'purple',Complete:'green',
+    New:'purple',Contacted:'warn','Proposal sent':'warn',Negotiating:'warn','Closed won':'green','Closed lost':'muted',
+    Idea:'muted',Drafting:'purple',Review:'warn','Ready to publish':'warn',Live:'green',
+    'Not started':'muted','In progress':'warn',Done:'green'
+  };
+  return '<span class="tag tag-'+(map[s]||'muted')+'">'+s+'</span>';
+}
+
+// ══════════════════════════════════════════════
+// OVERVIEW
+// ══════════════════════════════════════════════
+function renderOverview(){
+  var hrs = totalHrs();
+  document.getElementById('ov-hrs').textContent = hrs.toFixed(1);
+  document.getElementById('ov-proj-name').textContent = S.project.client;
+  document.getElementById('ov-tasks').textContent = S.todos.filter(function(t){ return !t.done; }).length;
+  document.getElementById('ov-leads').textContent = S.leads.length;
+  document.getElementById('ov-pct').textContent = S.project.progress+'%';
+  document.getElementById('ov-status').textContent = S.project.status;
+  document.getElementById('ov-client').textContent = S.project.client;
+  document.getElementById('ov-service').textContent = S.project.service;
+  document.getElementById('ov-value').textContent = '$'+S.project.value.toLocaleString();
+  document.getElementById('ov-prog-pct').textContent = S.project.progress+'%';
+  document.getElementById('ov-prog-bar').style.width = S.project.progress+'%';
+
+  var open = S.todos.filter(function(t){ return !t.done; }).slice(0,5);
+  var el = document.getElementById('ov-todo-list');
+  if(!open.length){ el.innerHTML='<div class="empty-state" style="padding:16px">No open tasks.</div>'; return; }
+  el.innerHTML = open.map(function(t){
+    return '<div class="action-item"><div class="action-check">·</div><div class="action-text">'+t.text+'</div></div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// PROJECT
+// ══════════════════════════════════════════════
+function saveProject(){
+  S.project.client = document.getElementById('mp-client').value || 'Client TBD';
+  S.project.service = document.getElementById('mp-service').value;
+  S.project.value = parseFloat(document.getElementById('mp-value').value)||0;
+  S.project.status = document.getElementById('mp-status').value;
+  S.project.due = document.getElementById('mp-due').value;
+  save(); renderProject(); closeModal('modal-project');
+}
+function renderProject(){
+  document.getElementById('proj-headline').textContent = S.project.client;
+  document.getElementById('p-client').textContent = S.project.client;
+  document.getElementById('p-service').textContent = S.project.service;
+  document.getElementById('p-value').textContent = '$'+S.project.value.toLocaleString();
+  document.getElementById('p-due').textContent = S.project.due || '—';
+  document.getElementById('p-pct-lbl').textContent = S.project.progress+'%';
+  document.getElementById('p-bar').style.width = S.project.progress+'%';
+  document.getElementById('p-slider').value = S.project.progress;
+  document.getElementById('p-status-badge').innerHTML = tagFor(S.project.status);
+  document.getElementById('p-notes').value = S.project.notes;
+}
+function updateProgress(v){
+  S.project.progress = parseInt(v);
+  document.getElementById('p-pct-lbl').textContent = v+'%';
+  document.getElementById('p-bar').style.width = v+'%';
+  save();
+}
+
+// ── DELIVERABLES ──
+function addDeliv(){
+  var name = document.getElementById('md-name').value; if(!name) return;
+  S.deliverables.push({ name:name, status:document.getElementById('md-status').value });
+  document.getElementById('md-name').value='';
+  save(); renderDelivs(); closeModal('modal-deliv');
+}
+function renderDelivs(){
+  var el = document.getElementById('deliv-list');
+  if(!S.deliverables.length){ el.innerHTML='<div class="empty-state">No deliverables yet.</div>'; return; }
+  el.innerHTML = S.deliverables.map(function(d,i){
+    return '<div class="deliv-item"><span>'+d.name+'</span><div style="display:flex;gap:8px;align-items:center">'+tagFor(d.status)+'<button class="btn btn-sm btn-ghost" onclick="cycleDeliv('+i+')" style="font-size:11px">cycle</button><button class="btn btn-sm btn-danger btn-ghost" onclick="removeDeliv('+i+')" style="font-size:10px">✕</button></div></div>';
+  }).join('');
+}
+function cycleDeliv(i){
+  var steps=['Not started','In progress','Done'];
+  S.deliverables[i].status = steps[(steps.indexOf(S.deliverables[i].status)+1)%steps.length];
+  save(); renderDelivs();
+}
+function removeDeliv(i){ S.deliverables.splice(i,1); save(); renderDelivs(); }
+
+// ══════════════════════════════════════════════
+// TIMER
+// ══════════════════════════════════════════════
+var timerInterval=null, timerStart=null, timerSecs=0;
+function toggleTimer(){
+  var btn=document.getElementById('timer-btn');
+  var disp=document.getElementById('timer-disp');
+  if(!timerInterval){
+    timerStart = Date.now() - timerSecs*1000;
+    timerInterval = setInterval(function(){
+      timerSecs = Math.floor((Date.now()-timerStart)/1000);
+      disp.textContent = fmtSecs(timerSecs);
+      disp.classList.add('running');
+    },1000);
+    btn.textContent='■ Stop';
+  } else {
+    clearInterval(timerInterval); timerInterval=null;
+    var hrs = timerSecs/3600;
+    if(hrs>0.01){
+      var note = document.getElementById('timer-note').value||'Work session';
+      logTime(hrs, note, today());
+      document.getElementById('timer-note').value='';
+    }
+    timerSecs=0; disp.textContent='00:00:00'; disp.classList.remove('running');
+    btn.textContent='▶ Start';
+  }
+}
+function fmtSecs(s){ var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60; return [h,m,sec].map(function(n){return String(n).padStart(2,'0');}).join(':'); }
+function today(){ return new Date().toISOString().split('T')[0]; }
+
+function logManual(){
+  var hrs=parseFloat(document.getElementById('ml-hrs').value); if(!hrs) return;
+  var date=document.getElementById('ml-date').value||today();
+  var note=document.getElementById('ml-note').value||'Manual entry';
+  logTime(hrs,note,date);
+  document.getElementById('ml-hrs').value=''; document.getElementById('ml-note').value='';
+  closeModal('modal-manual-log');
+}
+function logTime(hrs,note,date){
+  S.timeLog.unshift({hrs:hrs,note:note,date:date});
+  save(); renderTimeLog(); renderOverview();
+}
+function totalHrs(){ return S.timeLog.reduce(function(a,l){return a+l.hrs;},0); }
+function renderTimeLog(){
+  var total=totalHrs();
+  document.getElementById('tl-total').textContent=total.toFixed(1);
+  document.getElementById('tl-sessions').textContent=S.timeLog.length;
+  document.getElementById('tl-avg').textContent=S.timeLog.length?(total/S.timeLog.length).toFixed(1):'0.0';
+  document.getElementById('ov-hrs').textContent=total.toFixed(1);
+  var el=document.getElementById('time-list');
+  if(!S.timeLog.length){el.innerHTML='<div class="empty-state">No time logged yet.</div>';return;}
+  el.innerHTML=S.timeLog.map(function(e,i){
+    return '<div class="row-item"><span class="td-muted">'+e.date+'</span><span class="row-amt green" style="min-width:52px">'+e.hrs.toFixed(2)+'h</span><span style="flex:1;color:var(--muted);font-size:13px;padding:0 12px">'+e.note+'</span><span style="cursor:pointer;color:var(--muted);font-size:12px" onclick="removeTimeEntry('+i+')">✕</span></div>';
+  }).join('');
+}
+function removeTimeEntry(i){ S.timeLog.splice(i,1); save(); renderTimeLog(); }
+
+// ══════════════════════════════════════════════
+// TO-DOS
+// ══════════════════════════════════════════════
+var todoFilter='all';
+function addTodo(){
+  var text=document.getElementById('mt-task').value; if(!text) return;
+  S.todos.unshift({text:text,priority:document.getElementById('mt-priority').value,due:document.getElementById('mt-due').value,done:false,id:Date.now()});
+  document.getElementById('mt-task').value=''; document.getElementById('mt-due').value='';
+  save(); renderTodos(); renderOverview(); closeModal('modal-todo');
+}
+function filterTodos(f,btn){
+  todoFilter=f;
+  document.querySelectorAll('#tab-todos .tab-btn').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  renderTodos();
+}
+function renderTodos(){
+  var open=S.todos.filter(function(t){return !t.done;}).length;
+  var done=S.todos.filter(function(t){return t.done;}).length;
+  document.getElementById('td-open').textContent=open;
+  document.getElementById('td-done').textContent=done;
+  document.getElementById('td-pct').textContent=S.todos.length?Math.round(done/S.todos.length*100)+'%':'—';
+  var list=S.todos;
+  if(todoFilter==='open') list=list.filter(function(t){return !t.done;});
+  if(todoFilter==='done') list=list.filter(function(t){return t.done;});
+  var el=document.getElementById('todo-list');
+  if(!list.length){el.innerHTML='<div class="empty-state">No tasks here.</div>';return;}
+  var priMap={High:'tag-high',Normal:'tag-normal',Low:'tag-low'};
+  el.innerHTML=list.map(function(t){
+    return '<div class="action-item'+(t.done?' done':'')+'" id="todo-'+t.id+'">'
+      +'<div class="action-check" onclick="toggleTodo('+t.id+')">'+(t.done?'✓':'')+'</div>'
+      +'<div class="action-text">'+t.text+'</div>'
+      +(t.priority!=='Normal'?'<span class="action-tag '+priMap[t.priority]+'">'+t.priority+'</span>':'')
+      +(t.due?'<span class="action-tag">'+t.due+'</span>':'')
+      +'<span style="cursor:pointer;color:var(--muted);font-size:12px;margin-left:8px" onclick="removeTodo('+t.id+')">✕</span>'
+      +'</div>';
+  }).join('');
+}
+function toggleTodo(id){ var t=S.todos.find(function(x){return x.id===id;}); if(t){t.done=!t.done;} save(); renderTodos(); renderOverview(); }
+function removeTodo(id){ S.todos=S.todos.filter(function(t){return t.id!==id;}); save(); renderTodos(); renderOverview(); }
+
+// ══════════════════════════════════════════════
+// LEADS
+// ══════════════════════════════════════════════
+function addLead(){
+  var name=document.getElementById('ml-name').value||'Unnamed';
+  S.leads.push({name:name,type:document.getElementById('ml-type').value,source:document.getElementById('ml-source').value,status:document.getElementById('ml-status').value,notes:document.getElementById('ml-notes').value});
+  document.getElementById('ml-name').value=''; document.getElementById('ml-notes').value='';
+  save(); renderLeads(); renderOverview(); closeModal('modal-lead');
+}
+function renderLeads(){
+  var tb=document.getElementById('leads-body');
+  var em=document.getElementById('leads-empty');
+  if(!S.leads.length){tb.innerHTML='';em.style.display='block';return;}
+  em.style.display='none';
+  tb.innerHTML=S.leads.map(function(l,i){
+    return '<tr><td><strong>'+l.name+'</strong></td><td class="td-muted">'+l.type+'</td><td class="td-muted">'+l.source+'</td><td>'+tagFor(l.status)+'</td><td class="td-muted" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+( l.notes||'—')+'</td></tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// TIERS
+// ══════════════════════════════════════════════
+function addTier(){
+  var features=(document.getElementById('mti-features').value||'').split('\n').filter(Boolean);
+  S.tiers.push({name:document.getElementById('mti-name').value||'New tier',price:document.getElementById('mti-price').value||'TBD',cadence:document.getElementById('mti-cadence').value,features:features});
+  document.getElementById('mti-name').value=''; document.getElementById('mti-price').value=''; document.getElementById('mti-features').value='';
+  save(); renderTiers(); closeModal('modal-tier');
+}
+function renderTiers(){
+  document.getElementById('tiers-grid').innerHTML=S.tiers.map(function(t,i){
+    return '<div class="tier-card"><div class="tier-num">Tier 0'+(i+1)+'</div><div class="tier-name">'+t.name+'</div><div class="tier-price">'+t.price+'</div><div class="tier-cadence">'+t.cadence+'</div><div class="tier-features">'+t.features.map(function(f){return '<div class="tier-feat">'+f+'</div>';}).join('')+'</div><button class="btn btn-sm btn-danger" style="width:100%;margin-top:14px" onclick="removeTier('+i+')">Remove</button></div>';
+  }).join('');
+}
+function removeTier(i){ S.tiers.splice(i,1); save(); renderTiers(); }
+
+// ══════════════════════════════════════════════
+// PIPELINE
+// ══════════════════════════════════════════════
+function addPipeline(){
+  var name=document.getElementById('mpi-name').value||'Unnamed';
+  S.pipeline.push({name:name,type:document.getElementById('mpi-type').value,stage:document.getElementById('mpi-stage').value,date:document.getElementById('mpi-date').value,notes:document.getElementById('mpi-notes').value});
+  document.getElementById('mpi-name').value=''; document.getElementById('mpi-date').value=''; document.getElementById('mpi-notes').value='';
+  save(); renderPipeline(); closeModal('modal-pipeline');
+}
+function renderPipeline(){
+  var tb=document.getElementById('pipeline-body');
+  var em=document.getElementById('pipeline-empty');
+  if(!S.pipeline.length){tb.innerHTML='';em.style.display='block';return;}
+  em.style.display='none';
+  tb.innerHTML=S.pipeline.map(function(c){
+    return '<tr><td><strong>'+c.name+'</strong></td><td class="td-muted">'+c.type+'</td><td>'+tagFor(c.stage)+'</td><td class="td-muted">'+(c.date||'—')+'</td><td class="td-muted" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.notes||'—')+'</td></tr>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// INVOICE
+// ══════════════════════════════════════════════
+function addInvLine(){
+  var item=document.getElementById('inv-item').value;
+  var amt=parseFloat(document.getElementById('inv-amt').value);
+  if(!item||!amt) return;
+  S.invoiceLines.push({item:item,amt:amt});
+  document.getElementById('inv-item').value=''; document.getElementById('inv-amt').value='';
+  save(); renderInvoice();
+}
+function renderInvoice(){
+  var total=S.invoiceLines.reduce(function(a,l){return a+l.amt;},0);
+  document.getElementById('inv-total').textContent='$'+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  var el=document.getElementById('inv-lines');
+  el.innerHTML=S.invoiceLines.map(function(l,i){
+    return '<div class="inv-line"><span>'+l.item+'</span><div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--mono);font-size:13px">$'+l.amt.toLocaleString('en-US',{minimumFractionDigits:2})+'</span><span style="cursor:pointer;color:var(--muted);font-size:12px" onclick="removeInvLine('+i+')">✕</span></div></div>';
+  }).join('');
+}
+function removeInvLine(i){ S.invoiceLines.splice(i,1); save(); renderInvoice(); }
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+(function init(){
+  load();
+  var now=new Date();
+  document.getElementById('hdr-date').textContent=now.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  renderProject();
+  renderDelivs();
+  renderTimeLog();
+  renderTodos();
+  renderLeads();
+  renderTiers();
+  renderPipeline();
+  renderInvoice();
+  renderOverview();
+  console.log('BizHub v1 ready.');
+})();
+</script>
+</body>
+</html>
