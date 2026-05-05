@@ -404,22 +404,129 @@
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+<style>
+#tab-tasks { display:none }
+.tasks-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
+.tasks-toolbar select, .tasks-toolbar input {
+  background:var(--card);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:7px 12px;font-family:var(--sans);font-size:12px;outline:none;
+}
+.task-filter-chip {
+  padding:5px 12px;border-radius:20px;font-size:11px;font-family:var(--mono);
+  cursor:pointer;border:1px solid var(--border);background:var(--surface);
+  color:var(--muted);transition:all .15s;white-space:nowrap;
+}
+.task-filter-chip.active { background:var(--accent);border-color:var(--accent);color:#fff; }
+.tasks-board { position:relative;min-height:700px; }
+.sticky {
+  width:280px;min-height:180px;border-radius:14px;
+  position:absolute;cursor:default;
+  box-shadow:0 4px 24px #00000040;transition:box-shadow .2s;
+}
+.sticky.dragging { box-shadow:0 16px 48px #00000080;transform:rotate(1.5deg) scale(1.02);z-index:1000;cursor:grabbing; }
+.sticky-header {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px 10px;cursor:grab;border-radius:14px 14px 0 0;user-select:none;
+}
+.sticky-title {
+  font-size:13px;font-weight:700;flex:1;cursor:text;outline:none;
+  border:none;background:transparent;color:inherit;font-family:var(--sans);min-width:0;
+}
+.sticky-count { font-family:var(--mono);font-size:11px;background:#00000020;padding:2px 8px;border-radius:20px;margin:0 6px;flex-shrink:0; }
+.sticky-actions { display:flex;gap:4px;flex-shrink:0; }
+.sticky-btn { background:transparent;border:none;cursor:pointer;color:inherit;opacity:.7;font-size:14px;padding:2px 4px;border-radius:4px;transition:opacity .15s; }
+.sticky-btn:hover { opacity:1;background:#00000015; }
+.sticky-body { padding:10px 14px 14px; }
+.sticky-collapsed .sticky-body { display:none; }
+.sticky-collapsed { min-height:auto; }
+.task-item { padding:7px 0;border-bottom:1px solid #00000018;display:flex;align-items:flex-start;gap:8px; }
+.task-item:last-child { border-bottom:none; }
+.task-check { width:16px;height:16px;border-radius:4px;border:1.5px solid #00000030;flex-shrink:0;cursor:pointer;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .15s;background:#00000010; }
+.task-check.checked { background:#00000030;border-color:#00000050; }
+.task-item.done .task-text { text-decoration:line-through;opacity:.5; }
+.task-content { flex:1;min-width:0; }
+.task-text { font-size:12px;line-height:1.4;word-break:break-word;outline:none;cursor:text; }
+.task-text:empty:before { content:attr(placeholder);opacity:.4; }
+.task-meta { display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap; }
+.task-due { font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:10px;background:#00000015; }
+.task-due.overdue { background:var(--danger);color:#fff; }
+.task-due.due-soon { background:var(--warn);color:#1a1000; }
+.task-del { background:transparent;border:none;cursor:pointer;color:inherit;opacity:0;font-size:12px;padding:0 2px;transition:opacity .15s;flex-shrink:0;margin-top:1px; }
+.task-item:hover .task-del { opacity:.4; }
+.task-del:hover { opacity:.8 !important; }
+
+<style>
+#tab-tasks { display:none }
+.tasks-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:20px; flex-wrap:wrap; }
+.tasks-toolbar select, .tasks-toolbar input {
+  background:var(--card);color:var(--text);border:1px solid var(--border);
+  border-radius:8px;padding:7px 12px;font-family:var(--sans);font-size:12px;outline:none;
+}
+.task-filter-chip {
+  padding:5px 12px;border-radius:20px;font-size:11px;font-family:var(--mono);
+  cursor:pointer;border:1px solid var(--border);background:var(--surface);
+  color:var(--muted);transition:all .15s;white-space:nowrap;
+}
+.task-filter-chip.active { background:var(--accent);border-color:var(--accent);color:#fff; }
+.tasks-board { position:relative;min-height:700px; }
+.sticky {
+  width:280px;min-height:180px;border-radius:14px;
+  position:absolute;cursor:default;
+  box-shadow:0 4px 24px #00000040;transition:box-shadow .2s;
+}
+.sticky.dragging { box-shadow:0 16px 48px #00000080;transform:rotate(1.5deg) scale(1.02);z-index:1000;cursor:grabbing; }
+.sticky-header {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px 10px;cursor:grab;border-radius:14px 14px 0 0;user-select:none;
+}
+.sticky-title {
+  font-size:13px;font-weight:700;flex:1;cursor:text;outline:none;
+  border:none;background:transparent;color:inherit;font-family:var(--sans);min-width:0;
+}
+.sticky-count { font-family:var(--mono);font-size:11px;background:#00000020;padding:2px 8px;border-radius:20px;margin:0 6px;flex-shrink:0; }
+.sticky-actions { display:flex;gap:4px;flex-shrink:0; }
+.sticky-btn { background:transparent;border:none;cursor:pointer;color:inherit;opacity:.7;font-size:14px;padding:2px 4px;border-radius:4px;transition:opacity .15s; }
+.sticky-btn:hover { opacity:1;background:#00000015; }
+.sticky-body { padding:10px 14px 14px; }
+.sticky-collapsed .sticky-body { display:none; }
+.sticky-collapsed { min-height:auto; }
+.task-item { padding:7px 0;border-bottom:1px solid #00000018;display:flex;align-items:flex-start;gap:8px; }
+.task-item:last-child { border-bottom:none; }
+.task-check { width:16px;height:16px;border-radius:4px;border:1.5px solid #00000030;flex-shrink:0;cursor:pointer;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .15s;background:#00000010; }
+.task-check.checked { background:#00000030;border-color:#00000050; }
+.task-item.done .task-text { text-decoration:line-through;opacity:.5; }
+.task-content { flex:1;min-width:0; }
+.task-text { font-size:12px;line-height:1.4;word-break:break-word;outline:none;cursor:text; }
+.task-text:empty:before { content:attr(placeholder);opacity:.4; }
+.task-meta { display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap; }
+.task-due { font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:10px;background:#00000015; }
+.task-due.overdue { background:var(--danger);color:#fff; }
+.task-due.due-soon { background:var(--warn);color:#1a1000; }
+.task-del { background:transparent;border:none;cursor:pointer;color:inherit;opacity:0;font-size:12px;padding:0 2px;transition:opacity .15s;flex-shrink:0;margin-top:1px; }
+.task-item:hover .task-del { opacity:.4; }
+.task-del:hover { opacity:.8 !important; }
+</style>
+
+</style>
+
 </style>
 </head>
 <body>
 
 <header>
   <div class="logo">FinanceHub</div>
-<div style="display:flex;gap:6px;align-items:center">
-  <span style="font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);color:var(--accent);background:var(--accent)15;letter-spacing:1px">💰 FinanceHub</span>
-  <a href="biz-hub.html" style="font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);color:var(--muted);text-decoration:none;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">💼 BizHub</a>
-</div>
   <div class="header-actions" style="display:flex;gap:8px;align-items:center"><span style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="last-updated"></span><button id="import-btn" onclick="openImport()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer">+ Import CSV</button></div>
+  <div style="display:flex;gap:6px">
+    <button id="view-finance" onclick="switchView('finance',this)" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans)">💰 Finance</button>
+    <button id="view-tasks" onclick="switchView('tasks',this)" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans)">📌 Tasks</button>
+  </div>
   <div class="header-meta">
-    MEAGAN E. PRATT &nbsp;·&nbsp; <span>April 2026</span>
+    MEAGAN E. PRATT &nbsp;·&nbsp; <span>April 2026</span> &nbsp;·&nbsp; <span style="color:var(--accent2)">$4,358 · surplus $461/mo</span>
   </div>
 </header>
 
+<div id="finance-view">
 <div class="page">
 
   <div class="page-title">💰 Your Money</div>
@@ -430,7 +537,7 @@
     <div class="stat-card">
       <div class="stat-label">Monthly Take-Home</div>
       <div class="stat-value green">$8,466</div>
-      <div class="stat-sub">2 paychecks · $4,233 each</div>
+      <div class="stat-sub">2 paychecks · $4,358 each</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Total Debt (Meagan)</div>
@@ -471,11 +578,11 @@
             <span class="dot dot-green"></span>
             <div>
               Ferrovial (Meagan)
-              <span class="row-sub">Every other Friday · direct deposit</span>
+              <span class="row-sub">Every other Friday · direct deposit · updated Apr 17</span>
             </div>
           </div>
           <div>
-            <div class="row-amt green">$4,233.08</div>
+            <div class="row-amt green">$4,358.00</div>
             <div class="row-due">per paycheck</div>
           </div>
         </div>
@@ -494,7 +601,7 @@
         </div>
         <div class="total-row">
           <span>Monthly base income</span>
-          <span class="row-amt green">$8,466.16</span>
+          <span class="row-amt green">$8,716.00</span>
         </div>
         <div class="note green">Next paycheck: Apr 17 · Then May 1 · May 15</div>
       </div>
@@ -577,7 +684,7 @@
           Debt Tracker
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="card-badge badge-red">$46,922 remaining</span>
+          <span class="card-badge badge-red">$43,697 remaining</span>
           <span class="chevron">▼</span>
         </div>
       </div>
@@ -590,7 +697,7 @@
             <div>🔴 Chase Marriott (xxxx-0569)<span class="row-sub">26.74% APR · $659 min · TARGET $1,200/mo · due ~9th</span></div>
           </div>
           <div>
-            <div class="row-amt red" id="live-chase-bal" onclick="editBalance('chase')" style="cursor:pointer;text-decoration:underline dotted" title="Click to update">$13,992</div>
+            <div class="row-amt red" id="live-chase-bal" onclick="editBalance('chase')" style="cursor:pointer;text-decoration:underline dotted" title="Click to update">$14,500</div>
             <div class="row-due">~Jan 2027</div>
           </div>
         </div>
@@ -612,6 +719,26 @@
           <div>
             <div class="row-amt" style="color:var(--accent);cursor:pointer;text-decoration:underline dotted" id="live-sofi-bal" onclick="editBalance('sofi')" title="Click to update">$29,001</div>
             <div class="row-due">Aug 2027</div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-label">
+            <span class="dot dot-green"></span>
+            <div>🚗 Subaru Outback — RETURNED ✅<span class="row-sub">Returned within window · UFCU loan cancels when CarMax payment received</span></div>
+          </div>
+          <div>
+            <div class="row-amt green">$0</div>
+            <div class="row-due">cancelled</div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-label">
+            <span class="dot dot-warn"></span>
+            <div>🚙 Jeep Affirm — PAYING OFF THIS WEEK<span class="row-sub">Mom pays $5,000 · Meagan pays $1,579 · balance $6,579 → $0</span></div>
+          </div>
+          <div>
+            <div class="row-amt warn">$6,579</div>
+            <div class="row-due">this week ⚡</div>
           </div>
         </div>
         <div class="progress-wrap" style="margin-bottom:14px">
@@ -658,9 +785,9 @@
 
         <div class="total-row">
           <span>Total remaining (Meagan only)</span>
-          <span class="row-amt red">$46,922</span>
+          <span class="row-amt red">$43,697</span>
         </div>
-        <div class="note green">🏆 Payoff timeline: Boardsmith Aug 2026 → Chase Jan 2027 → Affirm x2 Jan 2027 → SoFi Aug 2027 → DEBT FREE 🚀</div>
+        <div class="note green">🏆 Timeline: IRA → 4 Affirms closed (imminently) · Jeep Affirm paid this week (Mom $5k + Meagan $1,579) · Chase → Jan 2027 · SoFi Aug 2027 → DEBT FREE 🚀</div>
       </div>
     </div>
 
@@ -699,7 +826,7 @@
           Bi-Weekly Paycheck Plan
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="card-badge badge-purple">$4,233 each</span>
+          <span class="card-badge badge-purple">$4,358 each</span>
           <span class="chevron">▼</span>
         </div>
       </div>
@@ -721,7 +848,7 @@
           <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Bluebonnet Electric</div><div><div class="row-amt">$150.61</div><div class="row-due">~16th</div></div></div>
           <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Peacock + Google</div><div><div class="row-amt">$14.01</div><div class="row-due">~16th</div></div></div>
           <div class="total-row"><span>Total obligations</span><span class="row-amt red">$6,294.86</span></div>
-          <div class="note red">Paycheck is $4,233 — obligations exceed one paycheck. BofA savings buffer covers the gap. Paycheck B surplus pre-funds this.</div>
+          <div class="note red">Paycheck is $4,358 — Paycheck A obligations $6,296 exceed one paycheck by $1,938. Paycheck B surplus of $3,251 covers this easily. Keep $2,000+ in BofA savings as the bridge.</div>
         </div>
 
         <div id="pcB" class="pc-section">
@@ -737,7 +864,7 @@
           <div class="row-item"><div class="row-label"><span class="dot dot-warn"></span>Vivint Security</div><div><div class="row-amt warn">$34.61</div><div class="row-due">~29th</div></div></div>
           <div class="row-item"><div class="row-label"><span class="dot dot-muted"></span>Apple iCloud</div><div><div class="row-amt">$12.99</div><div class="row-due">~2nd</div></div></div>
           <div class="total-row"><span>Total obligations</span><span class="row-amt green">$476.68</span></div>
-          <div class="note green">Surplus: ~$3,756 after bills. Use to pre-fund Paycheck A and transfer to Wealthfront HYSA.</div>
+          <div class="note green">Surplus: ~$3,881 after bills. Subaru returned ✅ — pre-fund Paycheck A buffer ($1,596 needed after IRA closes Affirms) then send remainder to Chase.</div>
         </div>
 
       </div>
@@ -911,7 +1038,7 @@
           <div><div class="row-amt" style="color:var(--accent)">~$1,118</div></div>
         </div>
         <div class="total-row"><span>Total liquid</span><span class="row-amt green">~$6,370</span></div>
-        <div class="note">Goal: move ~$2,000 from BofA savings → Wealthfront after May 1 paycheck. Keep $2,000 in BofA as operating buffer.</div>
+        <div class="note">Keep $2,000+ in BofA as Paycheck A bridge (gap is $1,938). Move surplus to Wealthfront on Paycheck B cycles. Skip Wealthfront when Chase needs extra attack payments.</div>
       </div>
     </div>
 
@@ -1253,6 +1380,170 @@
 
   </div>
 
+  <!-- ════════════ SECTION: WEALTH BUILDING ROADMAP ════════════ -->
+  <div class="section-label">🚀 Wealth Building Roadmap — Mar 2027 Onward</div>
+  <div class="grid grid-1">
+
+    <!-- PHASE OVERVIEW -->
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#4fc38a15">📅</div>
+          Phase Plan Overview
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-green">Mar 2027 → 2047</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+          <div style="background:var(--surface);border:1px solid #7c6af733;border-radius:10px;padding:14px">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Phase 1 — Foundation</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Mar 2027 → Dec 2034</div>
+            <div class="row-item"><span style="font-size:12px">401k (maxed)</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$23,500/yr</span></div>
+            <div class="row-item"><span style="font-size:12px">Emergency fund</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$500/mo</span></div>
+            <div class="row-item"><span style="font-size:12px">Extra mortgage</span><span style="font-family:var(--mono);font-size:12px;color:var(--warn)">$1,200/mo</span></div>
+            <div class="row-item" style="border:none"><span style="font-size:12px">Brokerage investing</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$886/mo</span></div>
+          </div>
+          <div style="background:var(--surface);border:1px solid #4fc38a33;border-radius:10px;padding:14px">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Phase 2 — Acceleration</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Dec 2034 → 2047</div>
+            <div class="row-item"><span style="font-size:12px">Mortgage freed</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$3,791/mo</span></div>
+            <div class="row-item"><span style="font-size:12px">Total investing</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$4,676/mo</span></div>
+            <div class="row-item"><span style="font-size:12px">After Subaru (2030)</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$5,054/mo</span></div>
+            <div class="row-item" style="border:none"><span style="font-size:12px">401k continues</span><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$23,500/yr</span></div>
+          </div>
+        </div>
+        <div class="note green">🏠 Mortgage paid off Dec 2034 — own your home outright. That single event unleashes $3,791/mo into investing and changes everything.</div>
+      </div>
+    </div>
+
+    <!-- MILESTONE TIMELINE -->
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#7c6af715">🎯</div>
+          Milestone Timeline
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-purple">2026 → 2047</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">Now</div><div class="tl-label">Citi BT active · 4 Affirms closed · IRA withdrawn</div><div class="tl-bal" style="color:var(--accent2)">✅</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">Jun 2026</div><div class="tl-label">💥 $3,792 lump → Citi drops to $10,030</div><div class="tl-bal" style="color:var(--accent2)">✅</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">Mar 2027</div><div class="tl-label">✅ Citi PAID OFF · 💰 Bonus ~$17,957 net</div><div class="tl-bal" style="color:var(--accent2)">🎉</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">Mar 2027</div><div class="tl-label">✅ SoFi PAID OFF (bonus) · $5,631 leftover to invest</div><div class="tl-bal" style="color:var(--accent2)">🎉</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent)"></div><div class="tl-date">Mar 2027</div><div class="tl-label">🚀 Wealth building begins · $3,466/mo surplus · 401k maxed</div><div class="tl-bal" style="color:var(--accent)">→</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--warn)"></div><div class="tl-date">May 2030</div><div class="tl-label">✅ Subaru PAID OFF · +$377/mo to investing</div><div class="tl-bal" style="color:var(--accent2)">🎉</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">Dec 2034</div><div class="tl-label">🏠 MORTGAGE PAID OFF · +$3,791/mo unleashed</div><div class="tl-bal" style="color:var(--accent2)">🎉</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent)"></div><div class="tl-date">Dec 2034</div><div class="tl-label">📈 Investing $5,054/mo · retirement accounts compounding</div><div class="tl-bal" style="color:var(--accent)">→</div></div>
+          <div class="tl-item"><div class="tl-dot" style="background:var(--accent2)"></div><div class="tl-date">2047</div><div class="tl-label">💎 Total net worth ~$4.4M · $147k/yr passive income</div><div class="tl-bal" style="color:var(--accent2)">🚀</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2047 NET WORTH PROJECTION -->
+    <div class="card open" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#e0555515">💎</div>
+          2047 Net Worth Projection
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-red">$4.4M target</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+          <div style="background:var(--surface);border:1px solid #7c6af733;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Retirement Accts</div>
+            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent)">$2.26M</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">401k + IRAs + Backdoor Roth</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid #4fc38a33;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--accent2);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Brokerage</div>
+            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent2)">$1.42M</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">Taxable investing</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid #f0a04833;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--warn);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">Home Equity</div>
+            <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:var(--warn)">$743k</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">Paid off · 3% appreciation</div>
+          </div>
+        </div>
+
+        <div class="row-item"><div>Rollover IRA (grows at 7%)</div><span style="font-family:var(--mono);color:var(--accent)">$893,838</span></div>
+        <div class="row-item"><div>401k (maxed $23,500/yr + growth)</div><span style="font-family:var(--mono);color:var(--accent)">$1,009,771</span></div>
+        <div class="row-item"><div>Roth IRA (grows at 7%)</div><span style="font-family:var(--mono);color:var(--accent)">$48,582</span></div>
+        <div class="row-item"><div>Backdoor Roth ($7k/yr if married)</div><span style="font-family:var(--mono);color:var(--accent)">$307,056</span></div>
+        <div class="row-item"><div>Brokerage (Phase 1 + Phase 2)</div><span style="font-family:var(--mono);color:var(--accent2)">$1,420,807</span></div>
+        <div class="row-item"><div>Home value (paid off)</div><span style="font-family:var(--mono);color:var(--warn)">$743,325</span></div>
+        <div class="total-row">
+          <span>TOTAL NET WORTH 2047</span>
+          <span class="row-amt" style="color:var(--accent2);font-size:18px">$4,423,380</span>
+        </div>
+        <div class="note green" style="margin-top:14px">💰 At 4% safe withdrawal rate: <strong style="color:var(--accent2)">$147,202/yr passive income</strong> from investments alone — without touching home equity. Financial independence. 🚀</div>
+      </div>
+    </div>
+
+    <!-- MORTGAGE PAYOFF DETAIL -->
+    <div class="card" onclick="toggleCard(this)">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon" style="background:#f0a04815">🏠</div>
+          Mortgage Accelerated Payoff (Scenario C)
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="card-badge badge-warn">+$1,200/mo extra</span>
+          <span class="chevron">▼</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row-item"><div>Balance (Mar 2027)</div><span style="font-family:var(--mono);color:var(--warn)">$305,303</span></div>
+        <div class="row-item"><div>Base payment</div><span style="font-family:var(--mono)">$2,590.87/mo</span></div>
+        <div class="row-item"><div>Extra payment</div><span style="font-family:var(--mono);color:var(--accent2)">+$1,200.00/mo</span></div>
+        <div class="row-item"><div>Total payment</div><span style="font-family:var(--mono);font-weight:600">$3,790.87/mo</span></div>
+        <div class="row-item"><div>Payoff date</div><span style="font-family:var(--mono);color:var(--accent2)">December 2034</span></div>
+        <div class="row-item"><div>Interest saved</div><span style="font-family:var(--mono);color:var(--accent2)">$36,270</span></div>
+        <div class="row-item" style="border:none"><div>Years saved vs minimum</div><span style="font-family:var(--mono);color:var(--accent2)">~4.5 years</span></div>
+        <div class="note" style="margin-top:12px">After payoff, $3,791/mo redirects entirely to brokerage investing — compounding hard for 13+ years until 2047.</div>
+      </div>
+    </div>
+
+  </div>
+
+</div><!-- end finance-view -->
+
+<!-- ── TASKS VIEW ── -->
+<div id="tasks-view" style="display:none">
+<div class="page">
+  <div class="page-title">📌 Task Boards</div>
+  <div class="page-sub" style="margin-bottom:20px">Drag to rearrange · Click to edit · All data saved locally</div>
+<!-- ── TASKS TAB ── -->
+  <div id="tab-tasks">
+    <div class="tasks-toolbar">
+      <button class="task-filter-chip active" onclick="setFilter('all',this)">All</button>
+      <button class="task-filter-chip" id="chip-overdue" onclick="setFilter('overdue',this)" style="color:var(--danger)">🔴 Overdue</button>
+      <button class="task-filter-chip" id="chip-week" onclick="setFilter('week',this)" style="color:var(--warn)">🟡 This week</button>
+      <button class="task-filter-chip" onclick="setFilter('nodate',this)">📋 No date</button>
+      <select id="filter-cat" onchange="filterByCategory()" style="margin-left:8px">
+        <option value="">All boards</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;font-family:var(--mono)">
+        <input type="checkbox" onchange="toggleShowDone(this)"> Show done
+      </label>
+      <button onclick="addBoard()" style="margin-left:auto;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans)">+ New Board</button>
+    </div>
+    <div class="tasks-board" id="tasks-board"></div>
+  </div>
+</div>
+</div>
+
   <!-- footer -->
   <div style="text-align:center;margin-top:48px;font-family:var(--mono);font-size:11px;color:var(--muted)">
     Pratt Finance Hub · Built with data from confirmed BofA + Chase statements · Apr 2026
@@ -1398,56 +1689,26 @@ window.onerror = function(msg,src,line,col,err){ console.error('ERR',msg,'@',lin
 // ═══════════════════════════════════════════════════════════════
 var DB = {
   transactions: [],   // [{id,date,month,desc,amount,category,notes,source}]
-  balances: { checking:4533.50, savings:718.47, chase:13992.03, sofi:29000.79 },
+  balances: { checking:4533.50, savings:718.47, chase:14499.62, sofi:29000.79 },
   targets: {
     'Groceries':400,'Dining Out':300,'Pets':350,'Pharmacy/Health':150,
     'Gas':100,'Shopping':150,'Entertainment':75,'Services':270,
     'Subscriptions':390,'Travel':0,'Other':100,'FSA/Therapy':270
   },
   debts: [
-    {name:'Chase Marriott',balance:13992.03,rate:26.74,monthly:1200,status:'attack',note:'~$5,625 at 0% until Nov 2026'},
-    {name:'SoFi Personal Loan',balance:29000.79,rate:7.80,monthly:1807.80,status:'active',note:'Ends Aug 2027'},
-    {name:'Affirm – Auto Tek #1',balance:1187.36,rate:0,monthly:118.74,status:'run',note:'0% ends Jan 2027'},
-    {name:'Affirm – Auto Tek #2',balance:1253.40,rate:0,monthly:125.49,status:'run',note:'0% ends Jan 2027'},
-    {name:'Affirm – Boardsmith',balance:488.98,rate:0,monthly:97.83,status:'run',note:'0% ends Aug 2026'},
-    {name:'Synchrony Sport (Sky)',balance:196.17,rate:0,monthly:30,status:'run',note:'Sky paying'},
+    {name:'Chase Marriott (xxxx-0569)',balance:14499.62,rate:26.74,monthly:1200,status:'attack',note:'Interest saving bal $13,820 · min $566 due May 9 · set up autopay!'},
+    {name:'SoFi Personal Loan',balance:29000.79,rate:7.80,monthly:1807.80,status:'active',note:'Autopay 5th-6th · ends Aug 2027'},
+    {name:'Subaru — RETURNED ✅',balance:0,rate:0,monthly:0,status:'paid',note:'Returned within window · UFCU loan cancelling'},
+    {name:'Jeep Affirm — PAYING OFF',balance:6579,rate:0,monthly:0,status:'run',note:'Mom $5k + Meagan $1,579 this week → $0 ✅'},
+    {name:'Affirm – Auto Tek #1',balance:1187.36,rate:0,monthly:118.74,status:'run',note:'0% — ends Jan 2027'},
+    {name:'Affirm – Auto Tek #2',balance:1253.40,rate:0,monthly:125.49,status:'run',note:'0% — ends Jan 2027'},
+    {name:'Affirm – Boardsmith',balance:488.98,rate:0,monthly:97.83,status:'run',note:'0% — ends Aug 2026'},
+    {name:'Synchrony Sport (Sky)',balance:196.17,rate:0,monthly:30,status:'run',note:'Sky paying — 0% year-end'},
     {name:'Citi Simplicity',balance:0,rate:0,monthly:0,status:'paid',note:'Paid off Mar 25 ✅'},
     {name:'Chase Prime Visa',balance:0,rate:0,monthly:0,status:'paid',note:'Paid off ✅'},
-    {name:'Discover',balance:0,rate:0,monthly:0,status:'paid',note:'Closed ✅'}
-  ],
-  selectedMonth: 'all',
-  editingTxn: null,
-  editingBalKey: null
+    {name:'Discover',balance:0,rate:0,monthly:0,status:'paid',note:'Closed ✅'},
+  ]
 };
-
-function dbSave(){
-  try{ localStorage.setItem('pratt_budget_v4', JSON.stringify({
-    transactions: DB.transactions,
-    balances: DB.balances,
-    targets: DB.targets,
-    debts: DB.debts
-  })); }catch(e){ console.warn('save failed',e); }
-}
-
-function dbLoad(){
-  try{
-    var raw = localStorage.getItem('pratt_budget_v4');
-    if(!raw) return;
-    var d = JSON.parse(raw);
-    if(d.transactions) DB.transactions = d.transactions;
-    if(d.balances) DB.balances = d.balances;
-    if(d.targets) Object.assign(DB.targets, d.targets);
-    if(d.debts) DB.debts = d.debts;
-  }catch(e){ console.warn('load failed',e); }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// CATEGORIES & RULES
-// ═══════════════════════════════════════════════════════════════
-var CATS = ['Income','Mortgage','Fixed Bills','Debt Payments','Utilities',
-  'Groceries','Dining Out','Pets','Pharmacy/Health','Gas','Shopping',
-  'Subscriptions','Entertainment','Travel','Services','FSA/Therapy',
-  'Savings','Transfers','Other'];
 
 var CAT_COLOR = {
   'Income':'#4fc38a','Mortgage':'#e05555','Fixed Bills':'#e07070',
@@ -2081,6 +2342,436 @@ function doPickFile(){
   console.log('BudgetHub v4 ready. Transactions:',DB.transactions.length);
 })();
 
+
+
+
+// ── TASKS SYSTEM ──────────────────────────────────────────────────────────
+let TASKS = {
+  boards: [],
+  filter: 'all',
+  showDone: false,
+  filterCat: '',
+};
+
+const STICKY_COLORS = [
+  { name:'purple', bg:'#2d1f5e', header:'#3d2b7a', text:'#e8e3ff' },
+  { name:'teal',   bg:'#0f3d3d', header:'#155555', text:'#d0f0ee' },
+  { name:'rose',   bg:'#4a1030', header:'#6b1844', text:'#ffd0e0' },
+  { name:'amber',  bg:'#3d2800', header:'#5c3c00', text:'#ffe8b0' },
+  { name:'green',  bg:'#0f3020', header:'#1a4a30', text:'#c0f0d0' },
+  { name:'blue',   bg:'#0f2040', header:'#1a3560', text:'#c0d8ff' },
+  { name:'slate',  bg:'#1e2030', header:'#2a2d45', text:'#d0d5e8' },
+  { name:'coral',  bg:'#3d1a10', header:'#5c2818', text:'#ffd8cc' },
+];
+
+function saveTasks() {
+  try { localStorage.setItem('pratt_tasks_v2', JSON.stringify(TASKS)); } catch(e) {}
+}
+function loadTasks() {
+  try {
+    const d = localStorage.getItem('pratt_tasks_v2');
+    if (d) Object.assign(TASKS, JSON.parse(d));
+  } catch(e) {}
+}
+
+function makeId() { return Math.random().toString(36).slice(2,9); }
+
+function getDueStatus(dateStr) {
+  if (!dateStr) return '';
+  const due = new Date(dateStr + 'T00:00:00');
+  const now = new Date(); now.setHours(0,0,0,0);
+  const diff = Math.floor((due - now) / 86400000);
+  if (diff < 0)  return 'overdue';
+  if (diff <= 7) return 'due-soon';
+  return '';
+}
+
+function formatDue(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function taskMatchesFilter(task) {
+  if (!TASKS.showDone && task.done) return false;
+  if (TASKS.filter === 'overdue') return getDueStatus(task.due) === 'overdue';
+  if (TASKS.filter === 'week')    return getDueStatus(task.due) === 'due-soon' || getDueStatus(task.due) === 'overdue';
+  if (TASKS.filter === 'nodate')  return !task.due;
+  return true;
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function renderTasksBoard() {
+  const board = document.getElementById('tasks-board');
+  if (!board) return;
+
+  // Count overdue + this week for filter chips
+  let overdueCount = 0, weekCount = 0;
+  TASKS.boards.forEach(b => b.tasks.forEach(t => {
+    if (!t.done) {
+      if (getDueStatus(t.due) === 'overdue') overdueCount++;
+      if (getDueStatus(t.due) === 'due-soon') weekCount++;
+    }
+  }));
+  const od = document.getElementById('chip-overdue');
+  const wk = document.getElementById('chip-week');
+  if (od) od.textContent = overdueCount > 0 ? `🔴 Overdue (${overdueCount})` : '🔴 Overdue';
+  if (wk) wk.textContent = weekCount > 0 ? `🟡 This week (${weekCount})` : '🟡 This week';
+
+  board.innerHTML = '';
+  let filtered = TASKS.boards;
+  if (TASKS.filterCat) filtered = filtered.filter(b => b.id === TASKS.filterCat);
+
+  filtered.forEach(board_data => {
+    const col = STICKY_COLORS.find(c => c.name === board_data.color) || STICKY_COLORS[0];
+    const visibleTasks = board_data.tasks.filter(t => taskMatchesFilter(t));
+    const pendingCount = board_data.tasks.filter(t => !t.done).length;
+
+    const el = document.createElement('div');
+    el.className = 'sticky' + (board_data.collapsed ? ' sticky-collapsed' : '');
+    el.dataset.id = board_data.id;
+    el.style.cssText = `background:${col.bg};color:${col.text};`;
+    if (board_data.x !== undefined) {
+      el.style.position = 'absolute';
+      el.style.left = board_data.x + 'px';
+      el.style.top  = board_data.y + 'px';
+    }
+
+    el.innerHTML = `
+      <div class="sticky-header" style="background:${col.header}" onmousedown="startDrag(event,'${board_data.id}')">
+        <input class="sticky-title" value="${board_data.name}" 
+          onmousedown="event.stopPropagation()"
+          onblur="renameBoard('${board_data.id}',this.value)"
+          onkeydown="if(event.key==='Enter')this.blur()"
+          style="color:${col.text}">
+        <span class="sticky-count">${pendingCount}</span>
+        <div class="sticky-actions" onmousedown="event.stopPropagation()">
+          <button class="sticky-btn" onclick="toggleCollapse('${board_data.id}')" title="Collapse">${board_data.collapsed ? '▼' : '▲'}</button>
+          <button class="sticky-btn" onclick="openColorPicker('${board_data.id}')" title="Color">🎨</button>
+          <button class="sticky-btn" onclick="deleteBoard('${board_data.id}')" title="Delete">✕</button>
+        </div>
+      </div>
+      <div class="sticky-body">
+        <div class="tasks-list" id="tasks-${board_data.id}">
+          ${visibleTasks.map(t => renderTask(t, board_data.id, col)).join('')}
+        </div>
+        <button onclick="addTask('${board_data.id}')" style="margin-top:8px;width:100%;background:#00000015;border:1px dashed #ffffff30;color:${col.text};border-radius:8px;padding:6px;font-size:11px;cursor:pointer;font-family:var(--sans)">+ Add task</button>
+      </div>`;
+
+    board.appendChild(el);
+    makeDraggable(el, board_data.id);
+  });
+
+  // Update category filter dropdown
+  const sel = document.getElementById('filter-cat');
+  if (sel) {
+    const curr = sel.value;
+    sel.innerHTML = '<option value="">All boards</option>' +
+      TASKS.boards.map(b => `<option value="${b.id}" ${b.id===curr?'selected':''}>${b.name}</option>`).join('');
+  }
+}
+
+function renderTask(t, boardId, col) {
+  const status = getDueStatus(t.due);
+  const dueClass = status === 'overdue' ? 'overdue' : status === 'due-soon' ? 'due-soon' : '';
+  const priorities = { high:'🔴', med:'🟡', low:'🟢', none:'' };
+  const nextPri = { high:'med', med:'low', low:'none', none:'high' };
+
+  return `<div class="task-item ${t.done?'done':''}" id="task-${t.id}">
+    <div class="task-check ${t.done?'checked':''}" onclick="toggleTask('${boardId}','${t.id}')">
+      ${t.done ? '✓' : ''}
+    </div>
+    <div class="task-content">
+      <div class="task-text" contenteditable="true" 
+        placeholder="Task..."
+        onblur="updateTaskText('${boardId}','${t.id}',this.innerText.trim())"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+        style="color:${col.text}">${t.text}</div>
+      <div class="task-meta">
+        ${t.due ? `<span class="task-due ${dueClass}">${formatDue(t.due)}</span>` : ''}
+        ${t.priority && t.priority !== 'none' ? `<span class="task-priority" onclick="cycleTaskPriority('${boardId}','${t.id}')" title="Priority">${priorities[t.priority]}</span>` : ''}
+        ${!t.due ? `<button onclick="openDatePicker('${boardId}','${t.id}')" style="background:#00000015;border:none;cursor:pointer;color:inherit;opacity:.5;font-size:10px;padding:1px 5px;border-radius:8px;font-family:var(--mono)">+ date</button>` : `<button onclick="clearDate('${boardId}','${t.id}')" style="background:transparent;border:none;cursor:pointer;color:inherit;opacity:.3;font-size:10px">✕date</button>`}
+        ${!t.priority || t.priority==='none' ? `<button onclick="cycleTaskPriority('${boardId}','${t.id}')" style="background:#00000015;border:none;cursor:pointer;color:inherit;opacity:.5;font-size:10px;padding:1px 5px;border-radius:8px;font-family:var(--mono)">+ priority</button>` : ''}
+      </div>
+      ${t.subtasks && t.subtasks.length > 0 ? `
+        <div class="subtasks">
+          ${t.subtasks.map((s,si) => `
+            <div class="subtask-item" style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:11px;opacity:${s.done?.7:1}">
+              <div style="width:12px;height:12px;border-radius:3px;border:1.5px solid #00000030;cursor:pointer;background:${s.done?'#00000030':'#00000010'};display:flex;align-items:center;justify-content:center;font-size:8px;flex-shrink:0"
+                onclick="toggleSubtask('${boardId}','${t.id}',${si})">${s.done?'✓':''}</div>
+              <span style="flex:1;text-decoration:${s.done?'line-through':'none'};color:${col.text};opacity:${s.done?.6:1}">${s.text}</span>
+              <button onclick="deleteSubtask('${boardId}','${t.id}',${si})" style="background:transparent;border:none;cursor:pointer;color:inherit;opacity:.3;font-size:10px">✕</button>
+            </div>`).join('')}
+        </div>` : ''}
+      <button onclick="addSubtask('${boardId}','${t.id}')" style="background:transparent;border:none;cursor:pointer;color:inherit;opacity:.35;font-size:10px;padding:2px 0;font-family:var(--sans)">+ subtask</button>
+    </div>
+    <button class="task-del" onclick="deleteTask('${boardId}','${t.id}')">✕</button>
+  </div>`;
+}
+
+// ── BOARD ACTIONS ──────────────────────────────────────────────────────────
+function addBoard() {
+  const col = STICKY_COLORS[TASKS.boards.length % STICKY_COLORS.length];
+  const board = document.getElementById('tasks-board');
+  const rect = board ? board.getBoundingClientRect() : {left:0,top:0};
+  TASKS.boards.push({
+    id: makeId(), name: 'New Board', color: col.name,
+    collapsed: false, tasks: [],
+    x: 20 + (TASKS.boards.length % 3) * 300,
+    y: 20 + Math.floor(TASKS.boards.length / 3) * 280,
+  });
+  saveTasks(); renderTasksBoard();
+}
+
+function deleteBoard(id) {
+  if (!confirm('Delete this board and all its tasks?')) return;
+  TASKS.boards = TASKS.boards.filter(b => b.id !== id);
+  saveTasks(); renderTasksBoard();
+}
+
+function renameBoard(id, name) {
+  const b = TASKS.boards.find(b => b.id === id);
+  if (b && name.trim()) { b.name = name.trim(); saveTasks(); renderTasksBoard(); }
+}
+
+function toggleCollapse(id) {
+  const b = TASKS.boards.find(b => b.id === id);
+  if (b) { b.collapsed = !b.collapsed; saveTasks(); renderTasksBoard(); }
+}
+
+function openColorPicker(id) {
+  const existing = document.getElementById('color-picker-popup');
+  if (existing) existing.remove();
+  const b = TASKS.boards.find(b => b.id === id);
+  if (!b) return;
+  const el = document.getElementById('tasks-board').querySelector(`[data-id="${id}"]`);
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const popup = document.createElement('div');
+  popup.id = 'color-picker-popup';
+  popup.style.cssText = `position:fixed;top:${rect.top+40}px;left:${rect.left}px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;gap:8px;z-index:2000;box-shadow:0 8px 32px #00000060`;
+  popup.innerHTML = STICKY_COLORS.map(c =>
+    `<div onclick="setColor('${id}','${c.name}')" style="width:24px;height:24px;border-radius:50%;background:${c.header};cursor:pointer;border:2px solid ${b.color===c.name?'#fff':'transparent'};transition:border .15s"></div>`
+  ).join('');
+  document.body.appendChild(popup);
+  setTimeout(() => document.addEventListener('click', function rm(e) {
+    if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click', rm); }
+  }), 100);
+}
+
+function setColor(id, color) {
+  const b = TASKS.boards.find(b => b.id === id);
+  if (b) { b.color = color; saveTasks(); renderTasksBoard(); }
+  const p = document.getElementById('color-picker-popup');
+  if (p) p.remove();
+}
+
+// ── TASK ACTIONS ───────────────────────────────────────────────────────────
+function addTask(boardId) {
+  const b = TASKS.boards.find(b => b.id === boardId);
+  if (!b) return;
+  b.tasks.push({ id:makeId(), text:'', done:false, due:'', priority:'none', subtasks:[] });
+  saveTasks(); renderTasksBoard();
+  // Focus new task
+  setTimeout(() => {
+    const tasks = document.querySelectorAll(`#tasks-${boardId} .task-text`);
+    if (tasks.length) tasks[tasks.length-1].focus();
+  }, 50);
+}
+
+function deleteTask(boardId, taskId) {
+  const b = TASKS.boards.find(b => b.id === boardId);
+  if (b) { b.tasks = b.tasks.filter(t => t.id !== taskId); saveTasks(); renderTasksBoard(); }
+}
+
+function toggleTask(boardId, taskId) {
+  const b = TASKS.boards.find(b => b.id === boardId);
+  const t = b && b.tasks.find(t => t.id === taskId);
+  if (t) { t.done = !t.done; saveTasks(); renderTasksBoard(); }
+}
+
+function updateTaskText(boardId, taskId, text) {
+  const b = TASKS.boards.find(b => b.id === boardId);
+  const t = b && b.tasks.find(t => t.id === taskId);
+  if (t) { t.text = text; saveTasks(); }
+}
+
+function cycleTaskPriority(boardId, taskId) {
+  const map = { none:'high', high:'med', med:'low', low:'none' };
+  const b = TASKS.boards.find(b => b.id === boardId);
+  const t = b && b.tasks.find(t => t.id === taskId);
+  if (t) { t.priority = map[t.priority||'none']; saveTasks(); renderTasksBoard(); }
+}
+
+function openDatePicker(boardId, taskId) {
+  const existing = document.getElementById('date-picker-popup');
+  if (existing) existing.remove();
+  const popup = document.createElement('div');
+  popup.id = 'date-picker-popup';
+  popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;z-index:2000;box-shadow:0 8px 32px #00000080;min-width:240px';
+  popup.innerHTML = `
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px">Set due date</div>
+    <input type="date" id="date-input" style="width:100%;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px">
+    <div style="display:flex;gap:8px">
+      <button onclick="setDate('${boardId}','${taskId}')" style="flex:1;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px;cursor:pointer;font-size:13px">Set</button>
+      <button onclick="document.getElementById('date-picker-popup').remove()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">Cancel</button>
+    </div>`;
+  document.body.appendChild(popup);
+  document.getElementById('date-input').focus();
+}
+
+function setDate(boardId, taskId) {
+  const val = document.getElementById('date-input').value;
+  const b = TASKS.boards.find(b => b.id === boardId);
+  const t = b && b.tasks.find(t => t.id === taskId);
+  if (t) { t.due = val; saveTasks(); renderTasksBoard(); }
+  const p = document.getElementById('date-picker-popup');
+  if (p) p.remove();
+}
+
+function clearDate(boardId, taskId) {
+  const b = TASKS.boards.find(b => b.id === boardId);
+  const t = b && b.tasks.find(t => t.id === taskId);
+  if (t) { t.due = ''; saveTasks(); renderTasksBoard(); }
+}
+
+// ── SUBTASKS ───────────────────────────────────────────────────────────────
+function addSubtask(boardId, taskId) {
+  const b = TASKS.boards.find(b => b.id === boardId);
+  const t = b && b.tasks.find(t => t.id === taskId);
+  if (!t) return;
+  const text = prompt('Subtask:');
+  if (text && text.trim()) {
+    if (!t.subtasks) t.subtasks = [];
+    t.subtasks.push({ text:text.trim(), done:false });
+    saveTasks(); renderTasksBoard();
+  }
+}
+
+function toggleSubtask(boardId, taskId, si) {
+  const b = TASKS.boards.find(b => b.id === boardId);
+  const t = b && b.tasks.find(t => t.id === taskId);
+  if (t && t.subtasks[si]) { t.subtasks[si].done = !t.subtasks[si].done; saveTasks(); renderTasksBoard(); }
+}
+
+function deleteSubtask(boardId, taskId, si) {
+  const b = TASKS.boards.find(b => b.id === boardId);
+  const t = b && b.tasks.find(t => t.id === taskId);
+  if (t) { t.subtasks.splice(si,1); saveTasks(); renderTasksBoard(); }
+}
+
+// ── DRAG & DROP ────────────────────────────────────────────────────────────
+let dragState = null;
+
+function startDrag(e, boardId) {
+  if (e.target.classList.contains('sticky-title') ||
+      e.target.classList.contains('sticky-btn') ||
+      e.target.closest('.sticky-actions')) return;
+  e.preventDefault();
+  const el = document.querySelector(`.sticky[data-id="${boardId}"]`);
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const board = document.getElementById('tasks-board');
+  const boardRect = board.getBoundingClientRect();
+  dragState = {
+    el, boardId,
+    offsetX: e.clientX - rect.left,
+    offsetY: e.clientY - rect.top,
+    boardLeft: boardRect.left,
+    boardTop: boardRect.top,
+  };
+  el.classList.add('dragging');
+  el.style.position = 'absolute';
+  el.style.zIndex = 1000;
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', endDrag);
+}
+
+function onDrag(e) {
+  if (!dragState) return;
+  const x = Math.max(0, e.clientX - dragState.boardLeft - dragState.offsetX);
+  const y = Math.max(0, e.clientY - dragState.boardTop - dragState.offsetY);
+  dragState.el.style.left = x + 'px';
+  dragState.el.style.top  = y + 'px';
+}
+
+function endDrag(e) {
+  if (!dragState) return;
+  const b = TASKS.boards.find(b => b.id === dragState.boardId);
+  if (b) {
+    b.x = parseInt(dragState.el.style.left)||0;
+    b.y = parseInt(dragState.el.style.top)||0;
+    saveTasks();
+  }
+  dragState.el.classList.remove('dragging');
+  dragState.el.style.zIndex = '';
+  document.removeEventListener('mousemove', onDrag);
+  document.removeEventListener('mouseup', endDrag);
+  dragState = null;
+}
+
+function makeDraggable(el, boardId) {
+  // Already handled via onmousedown in header
+}
+
+// ── FILTERS ────────────────────────────────────────────────────────────────
+function setFilter(f, el) {
+  TASKS.filter = f;
+  document.querySelectorAll('.task-filter-chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderTasksBoard();
+}
+
+function toggleShowDone(cb) {
+  TASKS.showDone = cb.checked;
+  renderTasksBoard();
+}
+
+function filterByCategory() {
+  TASKS.filterCat = document.getElementById('filter-cat').value;
+  renderTasksBoard();
+}
+
+// ── INIT TASKS ─────────────────────────────────────────────────────────────
+function initTasks() {
+  loadTasks();
+  renderTasksBoard();
+}
+
+
+
+
+// ── VIEW SWITCHER ──────────────────────────────────────────────────────────
+function switchView(view, btn) {
+  var fv = document.getElementById('finance-view');
+  var tv = document.getElementById('tasks-view');
+  var fb = document.getElementById('view-finance');
+  var tb = document.getElementById('view-tasks');
+  if (view === 'tasks') {
+    fv.style.display = 'none';
+    tv.style.display = 'block';
+    tb.style.background = 'var(--accent)';
+    tb.style.color = '#fff';
+    tb.style.border = 'none';
+    fb.style.background = 'var(--surface)';
+    fb.style.color = 'var(--muted)';
+    fb.style.border = '1px solid var(--border)';
+    renderTasksBoard();
+  } else {
+    tv.style.display = 'none';
+    fv.style.display = 'block';
+    fb.style.background = 'var(--accent)';
+    fb.style.color = '#fff';
+    fb.style.border = 'none';
+    tb.style.background = 'var(--surface)';
+    tb.style.color = 'var(--muted)';
+    tb.style.border = '1px solid var(--border)';
+  }
+}
+
+
+
+// ── TASKS SYSTEM ──────────────────────────────────────────────────────────
 </script>
 
 </body>
