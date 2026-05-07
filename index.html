@@ -205,33 +205,42 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 .filter-chip{font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
 .filter-chip:hover{border-color:var(--accent);color:var(--text)}
 .filter-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
-.tasks-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;min-height:200px}
-.sticky{background:var(--card2);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s,transform .2s}
-.sticky:hover{border-color:var(--border2);transform:translateY(-2px)}
-.sticky-hd{padding:12px 14px 10px;display:flex;align-items:center;justify-content:space-between}
-.sticky-title{font-size:13px;font-weight:600;flex:1;background:transparent;border:none;color:var(--text);font-family:var(--sans);cursor:text;outline:none}
-.sticky-actions{display:flex;gap:4px}
-.sticky-btn{width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.sticky-btn:hover{background:var(--surface);color:var(--text)}
-.sticky-tasks{padding:0 14px 8px}
-.task-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
-.task-item:last-child{border-bottom:none}
-.task-check{width:14px;height:14px;border-radius:3px;border:1px solid var(--border2);background:transparent;cursor:pointer;flex-shrink:0;margin-top:2px;appearance:none;transition:all .15s}
+.tasks-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;min-height:120px;align-items:start}
+.sticky{border-radius:10px;overflow:hidden;transition:box-shadow .2s,transform .15s;cursor:default;user-select:none}
+.sticky.dragging{opacity:.55;transform:scale(.97);box-shadow:0 8px 32px #00000060;z-index:100}
+.sticky.drag-over{box-shadow:0 0 0 2px var(--accent);transform:scale(1.01)}
+.sticky-hd{padding:9px 12px 8px;display:flex;align-items:center;justify-content:space-between;cursor:grab}
+.sticky-hd:active{cursor:grabbing}
+.sticky-title{font-size:12px;font-weight:600;flex:1;background:transparent;border:none;font-family:var(--sans);cursor:text;outline:none;min-width:0}
+.sticky-actions{display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.sticky:hover .sticky-actions{opacity:1}
+.sticky-btn{width:20px;height:20px;border-radius:4px;border:none;background:transparent;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:all .12s;opacity:.6}
+.sticky-btn:hover{background:rgba(255,255,255,.12);opacity:1}
+.sticky-tasks{padding:0 10px 4px}
+.task-item{display:flex;align-items:center;gap:6px;padding:3px 0;border-radius:4px;transition:background .12s;position:relative}
+.task-item:hover{background:rgba(255,255,255,.04)}
+.task-item .task-actions{display:none;gap:2px;position:absolute;right:0;top:50%;transform:translateY(-50%);background:inherit}
+.task-item:hover .task-actions{display:flex}
+.task-check{width:13px;height:13px;border-radius:3px;border:1px solid rgba(255,255,255,.25);background:transparent;cursor:pointer;flex-shrink:0;appearance:none;transition:all .12s}
 .task-check:checked{background:var(--accent);border-color:var(--accent)}
-.task-text{flex:1;background:transparent;border:none;color:var(--text);font-family:var(--sans);font-size:12px;outline:none;resize:none;line-height:1.4}
-.task-text.done{text-decoration:line-through;color:var(--muted)}
-.task-meta{display:flex;gap:6px;align-items:center;margin-top:3px}
-.task-due{font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
-.task-due.overdue{color:var(--danger);border-color:#e0555544;background:#e0555510}
-.task-due.due-soon{color:var(--warn);border-color:#f0a04844;background:#f0a04810}
-.task-due.ok{color:var(--muted)}
-.priority-dot{width:6px;height:6px;border-radius:50%;cursor:pointer;flex-shrink:0;margin-top:5px}
+.task-text{flex:1;background:transparent;border:none;font-family:var(--sans);font-size:12px;outline:none;resize:none;line-height:1.35;padding:1px 0;cursor:text}
+.task-text.done{text-decoration:line-through;opacity:.4}
+.task-due-badge{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:3px;white-space:nowrap;flex-shrink:0}
+.task-due-badge.overdue{color:var(--danger);background:#e0555520}
+.task-due-badge.due-soon{color:var(--warn);background:#f0a04820}
+.task-due-badge.ok{color:rgba(255,255,255,.3)}
+.priority-dot{width:5px;height:5px;border-radius:50%;cursor:pointer;flex-shrink:0;transition:transform .12s}
+.priority-dot:hover{transform:scale(1.5)}
 .p-high{background:var(--danger)}
 .p-med{background:var(--warn)}
 .p-low{background:var(--accent2)}
-.p-none{background:var(--border2)}
-.sticky-footer{padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:4px}
-.add-board-btn{background:var(--card2);border:2px dashed var(--border2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;color:var(--muted);font-size:13px;transition:all .2s}
+.p-none{background:rgba(255,255,255,.15)}
+.task-micro-btn{width:16px;height:16px;border-radius:3px;border:none;background:transparent;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:opacity .12s}
+.task-micro-btn:hover{opacity:1;background:rgba(255,255,255,.1)}
+.sticky-footer{padding:5px 10px 8px;display:flex;gap:4px}
+.add-task-btn{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid rgba(255,255,255,.1);background:transparent;cursor:pointer;transition:all .15s;opacity:.5}
+.add-task-btn:hover{opacity:1;border-color:rgba(255,255,255,.3)}
+.add-board-btn{background:var(--card2);border:2px dashed var(--border2);border-radius:10px;padding:16px;text-align:center;cursor:pointer;color:var(--muted);font-size:12px;transition:all .2s;display:flex;align-items:center;justify-content:center;min-height:60px}
 .add-board-btn:hover{border-color:var(--accent);color:var(--accent)}
 
 /* ── WEALTH SECTION ── */
@@ -1185,51 +1194,57 @@ function renderTasksBoard() {
   if(oc) oc.textContent=od>0?`🔴 Overdue (${od})`:'🔴 Overdue';
   if(wc) wc.textContent=wk>0?`🟡 This week (${wk})`:'🟡 This week';
 
-  const filtered = TASKS.boards.map(b=>({
-    ...b, tasks: b.tasks.filter(t=>taskMatchesFilter(t))
-  }));
-
-  board.innerHTML = filtered.map(b=>{
+  board.innerHTML = TASKS.boards.map(b=>{
     const col = STICKY_COLORS.find(c=>c.name===b.color)||STICKY_COLORS[0];
+    const visibleTasks = b.tasks.filter(t=>taskMatchesFilter(t));
     const done = b.tasks.filter(t=>t.done).length;
+    const total = b.tasks.length;
     return `
-    <div class="sticky" data-id="${b.id}" style="background:${col.bg};border-color:${col.header}40">
-      <div class="sticky-hd" style="background:${col.header}" onmousedown="startDrag(event,'${b.id}')">
-        <input class="sticky-title" style="color:${col.text}" value="${escHtml(b.title||'')}" 
-          oninput="updateBoardTitle('${b.id}',this.value)" placeholder="Board name…" onmousedown="event.stopPropagation()">
+    <div class="sticky" data-id="${b.id}" style="background:${col.bg}" draggable="true"
+      ondragstart="dragStart(event,'${b.id}')"
+      ondragover="dragOver(event,'${b.id}')"
+      ondragleave="dragLeave(event,'${b.id}')"
+      ondrop="dragDrop(event,'${b.id}')"
+      ondragend="dragEnd(event,'${b.id}')">
+      <div class="sticky-hd" style="background:${col.header}">
+        <input class="sticky-title" style="color:${col.text}" value="${escHtml(b.title||'')}"
+          oninput="updateBoardTitle('${b.id}',this.value)" placeholder="Board name…"
+          ondragstart="event.stopPropagation()" onmousedown="event.stopPropagation()">
+        ${total>0?`<span style="font-family:var(--mono);font-size:9px;color:${col.text}50;margin-right:6px">${total-done}/${total}</span>`:''}
         <div class="sticky-actions">
-          <button class="sticky-btn" onclick="openColorPicker('${b.id}')" title="Color" style="color:${col.text}60">🎨</button>
-          <button class="sticky-btn" onclick="toggleCollapse('${b.id}')" style="color:${col.text}60">${b.collapsed?'▼':'▲'}</button>
-          <button class="sticky-btn" onclick="deleteBoard('${b.id}')" style="color:${col.text}60">✕</button>
+          <button class="sticky-btn" onclick="openColorPicker('${b.id}')" style="color:${col.text}">🎨</button>
+          <button class="sticky-btn" onclick="toggleCollapse('${b.id}')" style="color:${col.text}">${b.collapsed?'▼':'▲'}</button>
+          <button class="sticky-btn" onclick="deleteBoard('${b.id}')" style="color:${col.text}">✕</button>
         </div>
       </div>
       ${b.collapsed?'':`
       <div class="sticky-tasks" id="tasks-${b.id}">
-        ${b.tasks.length===0?'<div style="padding:12px 0;font-size:12px;color:#ffffff30;text-align:center">No tasks</div>':''}
-        ${b.tasks.map(t=>{
+        ${visibleTasks.length===0&&total===0?`<div style="padding:8px 2px;font-size:11px;color:${col.text}30;text-align:center">Empty</div>`:''}
+        ${visibleTasks.map(t=>{
           const ds=getDueStatus(t.due);
-          return `<div class="task-item">
-            <input type="checkbox" class="task-check" ${t.done?'checked':''} onclick="toggleTask('${b.id}','${t.id}')">
-            <div style="flex:1;min-width:0">
-              <textarea class="task-text${t.done?' done':''}" style="color:${col.text}" 
-                rows="1" oninput="updateTaskText('${b.id}','${t.id}',this.value);autoResize(this)"
-                onfocus="autoResize(this)">${escHtml(t.text||'')}</textarea>
-              ${t.due?`<span class="task-due ${ds}">${formatDue(t.due)} ${ds==='overdue'?'⚠️':''}</span>`:''}
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;align-items:center">
-              <div class="priority-dot p-${t.priority||'none'}" onclick="cycleTaskPriority('${b.id}','${t.id}')" title="Priority"></div>
-              <button class="sticky-btn" onclick="openDatePicker('${b.id}','${t.id}')" style="font-size:10px;color:${col.text}60">📅</button>
-              <button class="sticky-btn" onclick="deleteTask('${b.id}','${t.id}')" style="font-size:10px;color:${col.text}60">✕</button>
+          return `<div class="task-item" style="padding:3px 2px">
+            <div class="priority-dot p-${t.priority||'none'}" onclick="cycleTaskPriority('${b.id}','${t.id}')" title="Priority: ${t.priority||'none'}"></div>
+            <input type="checkbox" class="task-check" ${t.done?'checked':''} onchange="toggleTask('${b.id}','${t.id}')">
+            <textarea class="task-text${t.done?' done':''}" style="color:${col.text};width:100%"
+              rows="1" oninput="updateTaskText('${b.id}','${t.id}',this.value);autoResize(this)"
+              onfocus="autoResize(this)">${escHtml(t.text||'')}</textarea>
+            ${t.due?`<span class="task-due-badge ${ds}">${formatDue(t.due)}</span>`:''}
+            <div class="task-actions">
+              <button class="task-micro-btn" onclick="openDatePicker('${b.id}','${t.id}')" style="color:${col.text}" title="Set date">📅</button>
+              <button class="task-micro-btn" onclick="deleteTask('${b.id}','${t.id}')" style="color:${col.text}" title="Delete">✕</button>
             </div>
           </div>`;
         }).join('')}
       </div>
-      <div class="sticky-footer" style="border-top-color:${col.header}60">
-        <button class="btn btn-ghost btn-sm" onclick="addTask('${b.id}')" style="color:${col.text}80;border-color:${col.text}20;font-size:10px">+ Task</button>
-        ${done>0?`<span style="font-family:var(--mono);font-size:9px;color:${col.text}50;align-self:center;margin-left:auto">${done} done</span>`:''}
+      <div class="sticky-footer">
+        <button class="add-task-btn" onclick="addTask('${b.id}')" style="color:${col.text}">+ Task</button>
+        ${done>0?`<span style="font-family:var(--mono);font-size:9px;color:${col.text}30;align-self:center;margin-left:auto">${done} done</span>`:''}
       </div>`}
     </div>`;
   }).join('') + `<div class="add-board-btn" onclick="addBoard()">+ New Board</div>`;
+
+  // Re-attach auto-resize to all textareas
+  setTimeout(()=>{ document.querySelectorAll('.task-text').forEach(el=>autoResize(el)); },20);
 }
 
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -1239,18 +1254,18 @@ function taskMatchesFilter(t){ if(!TASKS.showDone&&t.done) return false; if(TASK
 function makeId(){ return Math.random().toString(36).slice(2,9); }
 
 const STICKY_COLORS=[
-  {name:'purple',bg:'#1e1535',header:'#2d2060',text:'#e0d8ff'},
-  {name:'teal',  bg:'#0e2e2e',header:'#134040',text:'#c8f0ee'},
-  {name:'rose',  bg:'#2e0f1e',header:'#4a1530',text:'#ffd0e0'},
-  {name:'amber', bg:'#2a1a00',header:'#3d2600',text:'#ffe8b0'},
-  {name:'green', bg:'#0a2018',header:'#133025',text:'#b8f0c8'},
-  {name:'blue',  bg:'#0a1828',header:'#12263c',text:'#b8d8ff'},
-  {name:'slate', bg:'#141820',header:'#1e2330',text:'#c8d0e8'},
-  {name:'coral', bg:'#2a1008',header:'#3d1810',text:'#ffd0c0'},
+  {name:'purple',bg:'#1a1130',header:'#28185a',text:'#ddd0ff'},
+  {name:'teal',  bg:'#0c2828',header:'#103a3a',text:'#b8eeec'},
+  {name:'rose',  bg:'#280d1a',header:'#401228',text:'#ffccd8'},
+  {name:'amber', bg:'#231500',header:'#352000',text:'#ffdea0'},
+  {name:'green', bg:'#081c10',header:'#0e2a18',text:'#a8ecc0'},
+  {name:'blue',  bg:'#08142a',header:'#0e1e3e',text:'#a8ccff'},
+  {name:'slate', bg:'#10141c',header:'#181e2c',text:'#c0ccdd'},
+  {name:'coral', bg:'#220c06',header:'#341208',text:'#ffcab8'},
 ];
 
 window.addBoard = async function(){
-  TASKS.boards.push({id:makeId(),title:'',color:'purple',tasks:[],collapsed:false,x:0,y:0});
+  TASKS.boards.push({id:makeId(),title:'',color:'purple',tasks:[],collapsed:false});
   await saveTasks(); renderTasksBoard();
   setTimeout(()=>{ const ts=document.querySelectorAll('.sticky-title'); if(ts.length) ts[ts.length-1].focus(); },50);
 };
@@ -1287,26 +1302,47 @@ window.openColorPicker = function(id){
   const el=document.querySelector(`.sticky[data-id="${id}"]`); if(!el) return;
   const rect=el.getBoundingClientRect();
   const p=document.createElement('div'); p.id='cp';
-  p.style.cssText=`position:fixed;top:${rect.top+44}px;left:${rect.left+8}px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;gap:8px;z-index:2000;box-shadow:0 8px 32px #00000060`;
-  p.innerHTML=STICKY_COLORS.map(c=>`<div onclick="setColor('${id}','${c.name}')" style="width:22px;height:22px;border-radius:50%;background:${c.header};cursor:pointer;border:2px solid ${b.color===c.name?'#fff':'transparent'};transition:border .15s"></div>`).join('');
+  p.style.cssText=`position:fixed;top:${rect.top+40}px;left:${rect.left+8}px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;gap:8px;z-index:2000;box-shadow:0 8px 32px #00000060`;
+  p.innerHTML=STICKY_COLORS.map(c=>`<div onclick="setColor('${id}','${c.name}')" style="width:20px;height:20px;border-radius:50%;background:${c.header};cursor:pointer;border:2px solid ${b.color===c.name?'#fff':'transparent'};transition:border .15s"></div>`).join('');
   document.body.appendChild(p);
   setTimeout(()=>document.addEventListener('click',function rm(e){ if(!p.contains(e.target)){p.remove();document.removeEventListener('click',rm);} }),100);
 };
 window.setColor = async function(id,color){ const b=TASKS.boards.find(b=>b.id===id); if(b){b.color=color; await saveTasks(); renderTasksBoard();} const p=document.getElementById('cp'); if(p) p.remove(); };
 
-// Drag
-let DS=null;
-window.startDrag = function(e,bid){
-  if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON'||e.target.classList.contains('sticky-actions')) return;
-  e.preventDefault();
-  const el=document.querySelector(`.sticky[data-id="${bid}"]`); if(!el) return;
-  const rect=el.getBoundingClientRect();
-  DS={el,bid,ox:e.clientX-rect.left,oy:e.clientY-rect.top};
-  el.style.position='relative'; el.style.zIndex=100; el.style.opacity='.8';
-  document.addEventListener('mousemove',onDrag); document.addEventListener('mouseup',endDrag);
+// ── DRAG TO REORDER BOARDS ────────────────────────────────────
+let dragSrcId = null;
+window.dragStart = function(e, bid) {
+  dragSrcId = bid;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', bid);
+  setTimeout(()=>{ const el=document.querySelector(`.sticky[data-id="${bid}"]`); if(el) el.classList.add('dragging'); },0);
 };
-function onDrag(e){ if(!DS) return; }
-function endDrag(){ if(!DS) return; DS.el.style.opacity=''; DS.el.style.zIndex=''; document.removeEventListener('mousemove',onDrag); document.removeEventListener('mouseup',endDrag); DS=null; }
+window.dragOver = function(e, bid) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  if (bid !== dragSrcId) {
+    document.querySelectorAll('.sticky').forEach(s=>s.classList.remove('drag-over'));
+    const el=document.querySelector(`.sticky[data-id="${bid}"]`); if(el) el.classList.add('drag-over');
+  }
+};
+window.dragLeave = function(e, bid) {
+  const el=document.querySelector(`.sticky[data-id="${bid}"]`); if(el) el.classList.remove('drag-over');
+};
+window.dragDrop = async function(e, bid) {
+  e.preventDefault();
+  if (!dragSrcId || dragSrcId === bid) return;
+  const srcIdx = TASKS.boards.findIndex(b=>b.id===dragSrcId);
+  const tgtIdx = TASKS.boards.findIndex(b=>b.id===bid);
+  if (srcIdx<0||tgtIdx<0) return;
+  const [moved] = TASKS.boards.splice(srcIdx,1);
+  TASKS.boards.splice(tgtIdx,0,moved);
+  await saveTasks();
+  renderTasksBoard();
+};
+window.dragEnd = function(e, bid) {
+  document.querySelectorAll('.sticky').forEach(s=>{ s.classList.remove('dragging'); s.classList.remove('drag-over'); });
+  dragSrcId = null;
+};
 
 // ── UTILITIES ────────────────────────────────────────────────
 window.toggleCard = function(id){ document.getElementById(id).classList.toggle('open'); };
