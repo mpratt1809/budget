@@ -774,7 +774,14 @@ async function initData() {
       if (snap.exists()) { Object.assign(SETTINGS, snap.data()); renderPaycheckCalendar(); renderSettingsIncome(); renderCoverageOverview(); }
     });
     onSnapshot(doc(db,'hub','tasks'), snap => {
-      if (snap.exists()) { Object.assign(TASKS, snap.data()); renderTasksBoard(); }
+      if (snap.exists()) {
+        Object.assign(TASKS, snap.data());
+        // Don't re-render if user is actively typing in a task field
+        const active = document.activeElement;
+        if (active && active.classList.contains('task-text')) return;
+        if (active && active.classList.contains('sticky-title')) return;
+        renderTasksBoard();
+      }
     });
 
   } catch(e) {
@@ -798,7 +805,14 @@ function setSyncStatus(state) {
 async function saveDebts()       { if(DB_READY) await setDoc(doc(db,'hub','debts'),       {list: DEBTS}); }
 async function saveInvestments() { if(DB_READY) await setDoc(doc(db,'hub','investments'), {list: INVESTMENTS}); }
 async function saveSpending(d)   { if(DB_READY) await setDoc(doc(db,'hub','spending'),    d); }
-async function saveTasks()       { if(DB_READY) await setDoc(doc(db,'hub','tasks'),       {...TASKS}); }
+// ── FIREBASE SYNC ────────────────────────────────────────────
+let _saveTasksTimer = null;
+async function saveTasksImmediate() { if(DB_READY) await setDoc(doc(db,'hub','tasks'), {...TASKS}); }
+async function saveTasks() {
+  // Debounce — only write after 800ms of no changes
+  clearTimeout(_saveTasksTimer);
+  _saveTasksTimer = setTimeout(()=>saveTasksImmediate(), 800);
+}
 async function saveBills()       { if(DB_READY) await setDoc(doc(db,'hub','bills'),       {list: FIXED_BILLS}); }
 async function saveSettings()    { if(DB_READY) await setDoc(doc(db,'hub','settings'),    {...SETTINGS}); }
 
@@ -1292,12 +1306,16 @@ window.addBoard = async function(){
   setTimeout(()=>{ const ts=document.querySelectorAll('.sticky-title'); if(ts.length) ts[ts.length-1].focus(); },50);
 };
 window.deleteBoard = async function(id){ if(!confirm('Delete this board?')) return; TASKS.boards=TASKS.boards.filter(b=>b.id!==id); await saveTasks(); renderTasksBoard(); };
-window.updateBoardTitle = async function(id,v){ const b=TASKS.boards.find(b=>b.id===id); if(b){b.title=v; await saveTasks();} };
+window.updateBoardTitle = async function(id,v){ const b=TASKS.boards.find(b=>b.id===id); if(b){b.title=v; await saveTasks();} }; // debounced — no re-render
 window.toggleCollapse = async function(id){ const b=TASKS.boards.find(b=>b.id===id); if(b){b.collapsed=!b.collapsed; await saveTasks(); renderTasksBoard();} };
 window.addTask = async function(bid){ const b=TASKS.boards.find(b=>b.id===bid); if(!b) return; b.tasks.push({id:makeId(),text:'',done:false,due:'',priority:'none'}); await saveTasks(); renderTasksBoard(); setTimeout(()=>{ const ts=document.querySelectorAll(`#tasks-${bid} .task-text`); if(ts.length) ts[ts.length-1].focus(); },50); };
 window.deleteTask = async function(bid,tid){ const b=TASKS.boards.find(b=>b.id===bid); if(b){b.tasks=b.tasks.filter(t=>t.id!==tid); await saveTasks(); renderTasksBoard();} };
 window.toggleTask = async function(bid,tid){ const b=TASKS.boards.find(b=>b.id===bid); const t=b&&b.tasks.find(t=>t.id===tid); if(t){t.done=!t.done; await saveTasks(); renderTasksBoard();} };
-window.updateTaskText = async function(bid,tid,v){ const b=TASKS.boards.find(b=>b.id===bid); const t=b&&b.tasks.find(t=>t.id===tid); if(t){t.text=v; await saveTasks();} };
+window.updateTaskText = async function(bid,tid,v){ 
+  const b=TASKS.boards.find(b=>b.id===bid); 
+  const t=b&&b.tasks.find(t=>t.id===tid); 
+  if(t){ t.text=v; await saveTasks(); } // debounced — no re-render
+};
 window.cycleTaskPriority = async function(bid,tid){ const map={none:'high',high:'med',med:'low',low:'none'}; const b=TASKS.boards.find(b=>b.id===bid); const t=b&&b.tasks.find(t=>t.id===tid); if(t){t.priority=map[t.priority||'none']; await saveTasks(); renderTasksBoard();} };
 window.autoResize = function(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; };
 window.setFilter = function(f,el){ TASKS.filter=f; document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active')); if(el)el.classList.add('active'); renderTasksBoard(); };
