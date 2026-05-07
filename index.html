@@ -276,6 +276,33 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 .toast.ok{border-color:#4fc38a55;color:var(--accent2)}
 .toast.err{border-color:#e0555555;color:var(--danger)}
 
+/* ── SETTINGS ── */
+.settings-section{margin-bottom:32px}
+.settings-section-title{font-family:var(--mono);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.settings-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;align-items:start}
+.settings-item{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;position:relative}
+.settings-item-full{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.settings-label{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.settings-val{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text)}
+.settings-note{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px}
+.si-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s;margin-top:4px}
+.si-input:focus{border-color:var(--accent)}
+.si-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.debt-edit-row{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px}
+.debt-edit-row:last-child{margin-bottom:0}
+.debt-edit-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;margin-top:8px}
+.debt-edit-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.debt-edit-note-row{margin-top:8px}
+.bill-edit-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+.paycheck-overview{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+.paycheck-overview-title{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.coverage-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px}
+.coverage-row:last-child{border-bottom:none}
+.coverage-label{color:var(--muted);font-family:var(--mono);font-size:11px}
+.coverage-val{font-family:var(--mono);font-size:13px;font-weight:500}
+.field-label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.field-group{display:flex;flex-direction:column}
+
 /* ── RESPONSIVE ── */
 @media(max-width:640px){
   .stat-grid{grid-template-columns:1fr 1fr}
@@ -284,6 +311,9 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
   .tasks-board{grid-template-columns:1fr}
   .header-right{gap:4px}
   .nav-btn{padding:5px 10px;font-size:9px}
+  .settings-row{grid-template-columns:1fr}
+  .debt-edit-grid{grid-template-columns:1fr 1fr}
+  .bill-edit-grid{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
@@ -301,6 +331,7 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
     </div>
     <button class="nav-btn active" onclick="switchView('finance',this)" id="nav-finance">Finance</button>
     <button class="nav-btn" onclick="switchView('tasks',this)" id="nav-tasks">Tasks</button>
+    <button class="nav-btn" onclick="switchView('settings',this)" id="nav-settings">⚙ Settings</button>
   </div>
 </header>
 
@@ -523,6 +554,70 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════ SETTINGS VIEW ══ -->
+  <div class="view" id="view-settings">
+    <div class="hero">
+      <div class="hero-title">Settings ⚙</div>
+      <div class="hero-sub">Edit anything here — changes flow live into Finance</div>
+    </div>
+
+    <!-- INCOME -->
+    <div class="settings-section">
+      <div class="settings-section-title">Income</div>
+      <div class="settings-row">
+        <div class="settings-item">
+          <div class="settings-label">Bi-weekly Paycheck (take-home)</div>
+          <input class="si-input" id="set-paycheck" type="number" step="0.01" placeholder="4358.00">
+          <div class="si-actions"><button class="btn btn-primary btn-sm" onclick="saveIncomeSetting()">Save</button></div>
+        </div>
+        <div class="settings-item">
+          <div class="settings-label">Paycheck Anchor Date</div>
+          <input class="si-input" id="set-anchor" type="date" title="A known past payday to calculate future dates">
+          <div class="settings-note" style="margin-top:6px">Used to calculate your next payday</div>
+          <div class="si-actions"><button class="btn btn-primary btn-sm" onclick="saveIncomeSetting()">Save</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEBTS -->
+    <div class="settings-section">
+      <div class="settings-section-title">
+        <span>Debts</span>
+        <button class="btn btn-ghost btn-sm" onclick="openAddDebt()">+ Add</button>
+      </div>
+      <div id="set-debt-list"></div>
+    </div>
+
+    <!-- FIXED BILLS -->
+    <div class="settings-section">
+      <div class="settings-section-title">
+        <span>Fixed Monthly Bills</span>
+        <button class="btn btn-ghost btn-sm" onclick="addBillRow()">+ Add</button>
+      </div>
+      <div id="set-bills-list"></div>
+    </div>
+
+    <!-- INVESTMENTS -->
+    <div class="settings-section">
+      <div class="settings-section-title">
+        <span>Investment Accounts</span>
+        <button class="btn btn-ghost btn-sm" onclick="addInvestmentRow()">+ Add</button>
+      </div>
+      <div id="set-invest-list"></div>
+    </div>
+
+    <!-- PAYCHECK COVERAGE OVERVIEW -->
+    <div class="settings-section">
+      <div class="settings-section-title">Monthly Coverage Overview</div>
+      <div class="paycheck-overview">
+        <div class="paycheck-overview-title">Based on your current data</div>
+        <div id="set-coverage-body"></div>
+      </div>
+      <div class="note note-purple" style="font-size:11px">SoFi autopays on the 5th–6th from your account balance. The calendar shows what each paycheck is responsible for — ensure combined balance covers SoFi before the 5th.</div>
+    </div>
+
+  </div><!-- /settings -->
+
 </div><!-- /page -->
 
 <!-- ADD DEBT MODAL -->
@@ -578,24 +673,29 @@ const DEFAULT_INVESTMENTS = [
   {id:'fidinher',name:'Fidelity Inherited IRA', value:0, note:'Non-spouse beneficiary · Invesco transfer'},
 ];
 
-const FIXED_BILLS = [
-  {name:'Mortgage',              amt:2770.00, due:'1st'},
-  {name:'SoFi Loan',             amt:1807.80, due:'5th-6th'},
-  {name:'Subaru (UFCU)',         amt:630.05,  due:'~20th'},
-  {name:'AT&T Internet',         amt:75.70,   due:'~25th'},
-  {name:'T-Mobile',              amt:125.00,  due:'~22nd'},
-  {name:'Vivint Security',       amt:34.61,   due:'~29th'},
-  {name:'Home Team Pest',        amt:57.43,   due:'monthly'},
-  {name:'Salt Light & Electric', amt:24.95,   due:'monthly'},
-  {name:'Crunch Fitness',        amt:28.13,   due:'~13th'},
-  {name:'NTTA Toll',             amt:40.00,   due:'~15th'},
-  {name:'Home Insurance',        amt:164.64,  due:'monthly'},
-  {name:'Car Insurance',         amt:150.00,  due:'monthly'},
+// paycheck: 1=PC1, 2=PC2, 0=autopay/ensure balance
+const DEFAULT_BILLS = [
+  {id:'b1', name:'Mortgage',              amt:2770.00, due:'1st',     paycheck:1},
+  {id:'b2', name:'Crunch Fitness',        amt:28.13,   due:'~13th',   paycheck:1},
+  {id:'b3', name:'SoFi Personal Loan',    amt:1807.80, due:'5th-6th', paycheck:0},
+  {id:'b4', name:'Subaru',               amt:630.05,  due:'~20th',   paycheck:2},
+  {id:'b5', name:'T-Mobile',             amt:125.00,  due:'~22nd',   paycheck:2},
+  {id:'b6', name:'AT&T Internet',        amt:75.70,   due:'~25th',   paycheck:2},
+  {id:'b7', name:'NTTA Toll',            amt:40.00,   due:'~15th',   paycheck:2},
+  {id:'b8', name:'Home Team Pest',       amt:57.43,   due:'monthly', paycheck:2},
+  {id:'b9', name:'Vivint Security',      amt:34.61,   due:'~29th',   paycheck:2},
+  {id:'b10',name:'Salt Light & Electric',amt:24.95,   due:'monthly', paycheck:2},
+  {id:'b11',name:'Home Insurance',       amt:164.64,  due:'monthly', paycheck:0},
+  {id:'b12',name:'Car Insurance',        amt:150.00,  due:'monthly', paycheck:0},
 ];
+
+const DEFAULT_SETTINGS = { paycheck: 4358, anchor: '2026-05-02' };
 
 // ── STATE ────────────────────────────────────────────────────
 let DEBTS = [];
 let INVESTMENTS = [];
+let FIXED_BILLS = [];
+let SETTINGS = {...DEFAULT_SETTINGS};
 let SPENDING = {};
 let TASKS = { boards:[], filter:'all', showDone:false };
 let DB_READY = false;
@@ -604,21 +704,25 @@ let DB_READY = false;
 async function initData() {
   setSyncStatus('connecting');
   try {
-    // Debts
-    const debtSnap = await getDoc(doc(db,'hub','debts'));
+    const debtSnap  = await getDoc(doc(db,'hub','debts'));
     DEBTS = debtSnap.exists() ? debtSnap.data().list : DEFAULT_DEBTS;
     if (!debtSnap.exists()) await setDoc(doc(db,'hub','debts'), {list: DEFAULT_DEBTS});
 
-    // Investments
     const invSnap = await getDoc(doc(db,'hub','investments'));
     INVESTMENTS = invSnap.exists() ? invSnap.data().list : DEFAULT_INVESTMENTS;
     if (!invSnap.exists()) await setDoc(doc(db,'hub','investments'), {list: DEFAULT_INVESTMENTS});
 
-    // Spending
+    const billsSnap = await getDoc(doc(db,'hub','bills'));
+    FIXED_BILLS = billsSnap.exists() ? billsSnap.data().list : DEFAULT_BILLS;
+    if (!billsSnap.exists()) await setDoc(doc(db,'hub','bills'), {list: DEFAULT_BILLS});
+
+    const settSnap = await getDoc(doc(db,'hub','settings'));
+    if (settSnap.exists()) Object.assign(SETTINGS, settSnap.data());
+    else await setDoc(doc(db,'hub','settings'), DEFAULT_SETTINGS);
+
     const spendSnap = await getDoc(doc(db,'hub','spending'));
     SPENDING = spendSnap.exists() ? spendSnap.data() : {};
 
-    // Tasks
     const taskSnap = await getDoc(doc(db,'hub','tasks'));
     if (taskSnap.exists()) Object.assign(TASKS, taskSnap.data());
 
@@ -626,12 +730,17 @@ async function initData() {
     setSyncStatus('live');
     renderAll();
 
-    // Live listeners
     onSnapshot(doc(db,'hub','debts'), snap => {
       if (snap.exists()) { DEBTS = snap.data().list; renderDebts(); refreshDebtStats(); }
     });
     onSnapshot(doc(db,'hub','investments'), snap => {
       if (snap.exists()) { INVESTMENTS = snap.data().list; renderInvestments(); }
+    });
+    onSnapshot(doc(db,'hub','bills'), snap => {
+      if (snap.exists()) { FIXED_BILLS = snap.data().list; renderBills(); renderPaycheckCalendar(); renderSettingsBills(); renderCoverageOverview(); }
+    });
+    onSnapshot(doc(db,'hub','settings'), snap => {
+      if (snap.exists()) { Object.assign(SETTINGS, snap.data()); renderPaycheckCalendar(); renderSettingsIncome(); renderCoverageOverview(); }
     });
     onSnapshot(doc(db,'hub','tasks'), snap => {
       if (snap.exists()) { Object.assign(TASKS, snap.data()); renderTasksBoard(); }
@@ -640,9 +749,9 @@ async function initData() {
   } catch(e) {
     console.error('Firebase init error:', e);
     setSyncStatus('error');
-    // Fall back to defaults
     DEBTS = DEFAULT_DEBTS;
     INVESTMENTS = DEFAULT_INVESTMENTS;
+    FIXED_BILLS = DEFAULT_BILLS;
     renderAll();
   }
 }
@@ -659,6 +768,8 @@ async function saveDebts()       { if(DB_READY) await setDoc(doc(db,'hub','debts
 async function saveInvestments() { if(DB_READY) await setDoc(doc(db,'hub','investments'), {list: INVESTMENTS}); }
 async function saveSpending(d)   { if(DB_READY) await setDoc(doc(db,'hub','spending'),    d); }
 async function saveTasks()       { if(DB_READY) await setDoc(doc(db,'hub','tasks'),       {...TASKS}); }
+async function saveBills()       { if(DB_READY) await setDoc(doc(db,'hub','bills'),       {list: FIXED_BILLS}); }
+async function saveSettings()    { if(DB_READY) await setDoc(doc(db,'hub','settings'),    {...SETTINGS}); }
 
 // ── RENDER ALL ───────────────────────────────────────────────
 function renderAll() {
@@ -671,6 +782,11 @@ function renderAll() {
   renderTimeline();
   renderSpending();
   renderTasksBoard();
+  renderSettingsIncome();
+  renderSettingsDebts();
+  renderSettingsBills();
+  renderSettingsInvestments();
+  renderCoverageOverview();
 }
 
 // ── HERO DATE ────────────────────────────────────────────────
@@ -678,14 +794,18 @@ function renderHeroDate() {
   const now = new Date();
   document.getElementById('hero-date').textContent =
     now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}).toUpperCase();
-  // Next paycheck (bi-weekly from known anchor May 2 2026)
-  const anchor = new Date('2026-05-02');
+  const anchor = new Date((SETTINGS.anchor || '2026-05-02')+'T00:00:00');
   const today  = new Date(); today.setHours(0,0,0,0);
   const diff   = Math.ceil((today - anchor) / 86400000);
   const daysToNext = (14 - (diff % 14)) % 14 || 14;
   const nextPay = new Date(today); nextPay.setDate(today.getDate() + daysToNext);
   document.getElementById('stat-next-pay').textContent =
     nextPay.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  // Update paycheck stat dynamically
+  const pcEl = document.querySelector('#stat-next-pay')?.closest('.stat')?.previousElementSibling?.querySelector('.stat-val');
+  // Update paycheck display in stat strip
+  const statVals = document.querySelectorAll('.stat-val.green');
+  statVals.forEach(el => { if(el.textContent.startsWith('$4')) el.textContent = '$'+((SETTINGS.paycheck)||4358).toLocaleString('en-US',{minimumFractionDigits:2}); });
 }
 
 // ── DEBTS ────────────────────────────────────────────────────
@@ -809,43 +929,60 @@ function renderBills() {
 
 // ── PAYCHECK CALENDAR ────────────────────────────────────────
 function renderPaycheckCalendar() {
-  const paycheck = 4358;
-  const pc1Bills = [
-    {name:'Mortgage',      amt:2770.00},
-    {name:'SoFi Loan',     amt:1807.80},
-    {name:'Crunch Fitness',amt:28.13},
-  ];
-  const pc2Bills = [
-    {name:'Subaru (UFCU)', amt:630.05},
-    {name:'T-Mobile',      amt:125.00},
-    {name:'AT&T Internet', amt:75.70},
-    {name:'NTTA Toll',     amt:40.00},
-    {name:'Home Team',     amt:57.43},
-    {name:'Vivint',        amt:34.61},
-    {name:'Salt Light',    amt:24.95},
-  ];
+  const paycheck = SETTINGS.paycheck || 4358;
+  // Bills that hit around paycheck 1 (mortgage due 1st, Crunch ~13th)
+  const pc1Bills = FIXED_BILLS.filter(b => b.paycheck === 1);
+  // Bills that hit around paycheck 2 (mid-month)
+  const pc2Bills = FIXED_BILLS.filter(b => b.paycheck === 2);
+  // Autopay bills (SoFi etc — not assigned to either paycheck)
+  const autoBills = FIXED_BILLS.filter(b => b.paycheck === 0 || b.paycheck === undefined || b.paycheck === null);
+
   const pc1Total = pc1Bills.reduce((s,b)=>s+b.amt,0);
   const pc2Total = pc2Bills.reduce((s,b)=>s+b.amt,0);
+  const autoTotal = autoBills.reduce((s,b)=>s+b.amt,0);
+  const totalMonthly = FIXED_BILLS.reduce((s,b)=>s+b.amt,0);
+  const totalIncome = paycheck * 2;
   const pc1Remain = paycheck - pc1Total;
   const pc2Remain = paycheck - pc2Total;
+  const monthlyLeft = totalIncome - totalMonthly;
 
-  const makeCard = (title, bills, total, remain) => `
+  const makeCard = (title, bills, total, remain, note) => `
     <div class="paycheck-card">
       <div class="paycheck-title">${title}</div>
       <div class="paycheck-amount">$${paycheck.toLocaleString('en-US',{minimumFractionDigits:2})}</div>
       <div class="paycheck-bills">
-        ${bills.map(b=>`<div class="bill-line"><span>${b.name}</span><span>-$${b.amt.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>`).join('')}
-        <div class="bill-line total"><span>Bills Total</span><span>-$${total.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+        ${bills.length ? bills.map(b=>`<div class="bill-line"><span>${b.name}</span><span>-$${b.amt.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>`).join('') : '<div class="bill-line"><span style="color:var(--muted);font-style:italic">No bills assigned</span></div>'}
+        ${bills.length ? `<div class="bill-line total"><span>Bills Total</span><span>-$${total.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>` : ''}
       </div>
       <div class="paycheck-remain">
         <span class="remain-label">Remaining</span>
         <span style="font-family:var(--mono);font-size:15px;color:${remain>500?'var(--accent2)':remain>0?'var(--warn)':'var(--danger)'}">$${remain.toLocaleString('en-US',{minimumFractionDigits:2})}</span>
       </div>
+      ${note?`<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">${note}</div>`:''}
     </div>`;
 
+  const autoCard = autoBills.length ? `
+    <div class="paycheck-card" style="border-color:#7c6af733;background:linear-gradient(135deg,#1a1535,#141428)">
+      <div class="paycheck-title" style="color:var(--accent)">Autopay / Ensure Balance</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px">These autopay from your account — ensure balance covers them</div>
+      <div class="paycheck-bills">
+        ${autoBills.map(b=>`<div class="bill-line"><span>${b.name}</span><span>-$${b.amt.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>`).join('')}
+        <div class="bill-line total"><span>Total</span><span>-$${autoTotal.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+      </div>
+    </div>` : '';
+
   document.getElementById('paycheck-grid').innerHTML =
-    makeCard('Paycheck 1 (1st–2nd bills)',  pc1Bills, pc1Total, pc1Remain) +
-    makeCard('Paycheck 2 (mid-month bills)', pc2Bills, pc2Total, pc2Remain);
+    makeCard('Paycheck 1 · Early Month', pc1Bills, pc1Total, pc1Remain, '') +
+    makeCard('Paycheck 2 · Mid Month', pc2Bills, pc2Total, pc2Remain, '') +
+    autoCard +
+    `<div class="paycheck-card" style="border-color:#4fc38a33;background:#0a201810">
+      <div class="paycheck-title" style="color:var(--accent2)">Monthly Overview</div>
+      <div class="paycheck-bills">
+        <div class="bill-line"><span>Combined take-home</span><span style="color:var(--accent2)">$${totalIncome.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+        <div class="bill-line"><span>Total fixed bills</span><span>-$${totalMonthly.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+        <div class="bill-line total"><span>Left for spending/debt</span><span style="color:${monthlyLeft>1000?'var(--accent2)':monthlyLeft>0?'var(--warn)':'var(--danger)'}">$${monthlyLeft.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+      </div>
+    </div>`;
 }
 
 // ── SPENDING ─────────────────────────────────────────────────
@@ -1179,6 +1316,7 @@ window.switchView = function(view, btn){
   document.getElementById('view-'+view).classList.add('active');
   btn.classList.add('active');
   if(view==='tasks') renderTasksBoard();
+  if(view==='settings') { renderSettingsIncome(); renderSettingsDebts(); renderSettingsBills(); renderSettingsInvestments(); renderCoverageOverview(); }
 };
 
 window.showToast = function(msg,type='ok'){
@@ -1186,6 +1324,155 @@ window.showToast = function(msg,type='ok'){
   t.textContent=msg; t.className='toast '+(type==='ok'?'ok':'err');
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3000);
+};
+
+// ── SETTINGS RENDERS ────────────────────────────────────────
+function renderSettingsIncome() {
+  const pcInput = document.getElementById('set-paycheck');
+  const ancInput = document.getElementById('set-anchor');
+  if (pcInput) pcInput.value = SETTINGS.paycheck || 4358;
+  if (ancInput) ancInput.value = SETTINGS.anchor || '2026-05-02';
+}
+
+function renderSettingsDebts() {
+  const el = document.getElementById('set-debt-list');
+  if (!el) return;
+  el.innerHTML = DEBTS.map(d => `
+    <div class="debt-edit-row" data-id="${d.id}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div class="debt-edit-name">${d.name}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select onchange="updateDebtStatus('${d.id}',this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:3px 6px;outline:none">
+            ${['attack','active','run','paid'].map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s.toUpperCase()}</option>`).join('')}
+          </select>
+          <button class="btn btn-danger btn-sm" onclick="deleteDebt('${d.id}')">✕</button>
+        </div>
+      </div>
+      <div class="debt-edit-grid">
+        <div class="field-group"><div class="field-label">Name</div><input class="si-input" value="${escHtml(d.name)}" onchange="updateDebtField('${d.id}','name',this.value)" placeholder="Debt name"></div>
+        <div class="field-group"><div class="field-label">Balance ($)</div><input class="si-input" type="number" step="0.01" value="${d.balance}" onchange="updateDebtField('${d.id}','balance',parseFloat(this.value))"></div>
+        <div class="field-group"><div class="field-label">Rate (%)</div><input class="si-input" type="number" step="0.01" value="${d.rate}" onchange="updateDebtField('${d.id}','rate',parseFloat(this.value)||0)"></div>
+        <div class="field-group"><div class="field-label">Monthly ($)</div><input class="si-input" type="number" step="0.01" value="${d.monthly}" onchange="updateDebtField('${d.id}','monthly',parseFloat(this.value)||0)"></div>
+      </div>
+      <div class="debt-edit-note-row">
+        <div class="field-label">Lender / Note</div>
+        <input class="si-input" value="${escHtml(d.note||'')}" onchange="updateDebtField('${d.id}','note',this.value)" placeholder="Lender, notes, due date…">
+      </div>
+    </div>`).join('');
+}
+
+function renderSettingsBills() {
+  const el = document.getElementById('set-bills-list');
+  if (!el) return;
+  el.innerHTML = FIXED_BILLS.map(b => `
+    <div class="debt-edit-row" data-id="${b.id}">
+      <div class="bill-edit-grid">
+        <div class="field-group"><div class="field-label">Bill Name</div><input class="si-input" value="${escHtml(b.name)}" onchange="updateBillField('${b.id}','name',this.value)"></div>
+        <div class="field-group"><div class="field-label">Amount ($)</div><input class="si-input" type="number" step="0.01" value="${b.amt}" onchange="updateBillField('${b.id}','amt',parseFloat(this.value)||0)"></div>
+        <div class="field-group"><div class="field-label">Due Date</div><input class="si-input" value="${escHtml(b.due||'')}" onchange="updateBillField('${b.id}','due',this.value)" placeholder="e.g. 1st, ~20th"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Assign to:</span>
+          <select onchange="updateBillField('${b.id}','paycheck',parseInt(this.value))" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:3px 8px;outline:none">
+            <option value="1" ${b.paycheck===1?'selected':''}>Paycheck 1 (early month)</option>
+            <option value="2" ${b.paycheck===2?'selected':''}>Paycheck 2 (mid month)</option>
+            <option value="0" ${(!b.paycheck||b.paycheck===0)?'selected':''}>Autopay / Ensure Balance</option>
+          </select>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteBill('${b.id}')">✕ Remove</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderSettingsInvestments() {
+  const el = document.getElementById('set-invest-list');
+  if (!el) return;
+  el.innerHTML = INVESTMENTS.map(inv => `
+    <div class="debt-edit-row" data-id="${inv.id}">
+      <div class="bill-edit-grid">
+        <div class="field-group"><div class="field-label">Account Name</div><input class="si-input" value="${escHtml(inv.name)}" onchange="updateInvestField('${inv.id}','name',this.value)"></div>
+        <div class="field-group"><div class="field-label">Current Value ($)</div><input class="si-input" type="number" step="1" value="${inv.value||''}" onchange="updateInvestField('${inv.id}','value',parseFloat(this.value)||0)" placeholder="0"></div>
+        <div class="field-group"><div class="field-label">Note</div><input class="si-input" value="${escHtml(inv.note||'')}" onchange="updateInvestField('${inv.id}','note',this.value)" placeholder="Description…"></div>
+      </div>
+      <div style="margin-top:6px;display:flex;justify-content:flex-end">
+        <button class="btn btn-danger btn-sm" onclick="deleteInvestment('${inv.id}')">✕ Remove</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderCoverageOverview() {
+  const el = document.getElementById('set-coverage-body');
+  if (!el) return;
+  const paycheck = SETTINGS.paycheck || 4358;
+  const monthly = paycheck * 2;
+  const totalBills = FIXED_BILLS.reduce((s,b)=>s+b.amt,0);
+  const pc1 = FIXED_BILLS.filter(b=>b.paycheck===1).reduce((s,b)=>s+b.amt,0);
+  const pc2 = FIXED_BILLS.filter(b=>b.paycheck===2).reduce((s,b)=>s+b.amt,0);
+  const auto = FIXED_BILLS.filter(b=>!b.paycheck||b.paycheck===0).reduce((s,b)=>s+b.amt,0);
+  const discretionary = monthly - totalBills;
+  el.innerHTML = `
+    <div class="coverage-row"><span class="coverage-label">Bi-weekly paycheck</span><span class="coverage-val" style="color:var(--accent2)">$${paycheck.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+    <div class="coverage-row"><span class="coverage-label">Monthly income (×2)</span><span class="coverage-val" style="color:var(--accent2)">$${monthly.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+    <div class="coverage-row"><span class="coverage-label">Paycheck 1 bills</span><span class="coverage-val" style="color:var(--warn)">-$${pc1.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+    <div class="coverage-row"><span class="coverage-label">Paycheck 2 bills</span><span class="coverage-val" style="color:var(--warn)">-$${pc2.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+    <div class="coverage-row"><span class="coverage-label">Autopay (ensure in account)</span><span class="coverage-val" style="color:var(--info)">-$${auto.toLocaleString('en-US',{minimumFractionDigits:2})}</span></div>
+    <div class="coverage-row" style="border-top:2px solid var(--border2);padding-top:10px;margin-top:4px">
+      <span class="coverage-label" style="font-weight:700;color:var(--text)">Left for spending / debt attack</span>
+      <span class="coverage-val" style="font-size:16px;color:${discretionary>1000?'var(--accent2)':discretionary>0?'var(--warn)':'var(--danger)'}">$${discretionary.toLocaleString('en-US',{minimumFractionDigits:2})}</span>
+    </div>`;
+}
+
+// ── SETTINGS FIELD UPDATERS ──────────────────────────────────
+window.saveIncomeSetting = async function() {
+  const pc = parseFloat(document.getElementById('set-paycheck').value);
+  const anchor = document.getElementById('set-anchor').value;
+  if (!isNaN(pc)) SETTINGS.paycheck = pc;
+  if (anchor) SETTINGS.anchor = anchor;
+  await saveSettings();
+  renderHeroDate(); renderPaycheckCalendar(); renderBills(); renderCoverageOverview();
+  showToast('Income settings saved ✓','ok');
+};
+
+window.updateDebtField = async function(id, field, val) {
+  const d = DEBTS.find(d=>d.id===id); if(!d) return;
+  d[field] = val;
+  if (field==='monthly') d.min = val;
+  await saveDebts();
+  showToast('Saved ✓','ok');
+};
+window.updateDebtStatus = async function(id, val) {
+  const d = DEBTS.find(d=>d.id===id); if(!d) return;
+  d.status = val; await saveDebts(); showToast('Status updated ✓','ok');
+};
+
+window.updateBillField = async function(id, field, val) {
+  const b = FIXED_BILLS.find(b=>b.id===id); if(!b) return;
+  b[field] = val; await saveBills();
+  showToast('Saved ✓','ok');
+};
+window.deleteBill = async function(id) {
+  if(!confirm('Remove this bill?')) return;
+  FIXED_BILLS = FIXED_BILLS.filter(b=>b.id!==id);
+  await saveBills(); renderSettingsBills(); showToast('Bill removed ✓','ok');
+};
+window.addBillRow = async function() {
+  FIXED_BILLS.push({id:'b'+Date.now(),name:'New Bill',amt:0,due:'monthly',paycheck:2});
+  await saveBills(); renderSettingsBills(); showToast('Bill added — edit below','ok');
+};
+
+window.updateInvestField = async function(id, field, val) {
+  const inv = INVESTMENTS.find(i=>i.id===id); if(!inv) return;
+  inv[field] = val; await saveInvestments(); showToast('Saved ✓','ok');
+};
+window.deleteInvestment = async function(id) {
+  if(!confirm('Remove this account?')) return;
+  INVESTMENTS = INVESTMENTS.filter(i=>i.id!==id);
+  await saveInvestments(); renderSettingsInvestments(); showToast('Account removed ✓','ok');
+};
+window.addInvestmentRow = async function() {
+  INVESTMENTS.push({id:'inv'+Date.now(),name:'New Account',value:0,note:''});
+  await saveInvestments(); renderSettingsInvestments(); showToast('Account added — edit below','ok');
 };
 
 // ── BOOT ────────────────────────────────────────────────────
