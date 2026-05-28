@@ -720,7 +720,7 @@ function updateEatingUI() {
 // ── NIGHT LOG ──
 window.setStress = function(v) {
   stressVal = v;
-  document.querySelectorAll('#stress-stars .star').forEach((s,i) => s.classList.toggle('on', i < v));
+  document.querySelectorAll('#stress-stars .star').forEach((s,i) => s.classList.toggle('on', i === v - 1));
 };
 
 window.saveNightLog = async function() {
@@ -834,7 +834,7 @@ Use null for any value not found across any of the images.`
 // ── MORNING LOG ──
 window.setRecoveryFeel = function(v) {
   recoveryFeelVal = v;
-  document.querySelectorAll('#recovery-stars .star').forEach((s,i) => s.classList.toggle('on', i < v));
+  document.querySelectorAll('#recovery-stars .star').forEach((s,i) => s.classList.toggle('on', i === v - 1));
 };
 
 window.saveMorningLog = async function() {
