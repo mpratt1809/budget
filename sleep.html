@@ -34,9 +34,9 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 .logo-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
 .header-right{display:flex;align-items:center;gap:6px}
-.nav-btn{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;text-decoration:none;display:inline-flex;align-items:center}
-.nav-btn:hover{border-color:var(--accent);color:var(--text)}
-.nav-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.nav-btn{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted) !important;cursor:pointer;transition:all .2s;text-decoration:none !important;display:inline-flex;align-items:center}
+.nav-btn:hover{border-color:var(--accent);color:var(--text) !important}
+.nav-btn.active{background:var(--accent);border-color:var(--accent);color:#fff !important}
 .sync-dot{width:5px;height:5px;border-radius:50%;background:var(--muted)}
 .sync-dot.live{background:var(--accent2);animation:pulse 2s ease-in-out infinite}
 
@@ -265,14 +265,14 @@ canvas{width:100%!important;height:120px!important}
 
   <!-- TAB NAV -->
   <div class="tab-nav">
-    <button class="tab-btn active" onclick="switchTab('today',this)">Today</button>
-    <button class="tab-btn" onclick="switchTab('morning',this)">Morning</button>
+    <button class="tab-btn" onclick="switchTab('today',this)">Today</button>
+    <button class="tab-btn active" onclick="switchTab('morning',this)">Morning</button>
     <button class="tab-btn" onclick="switchTab('trends',this)">Trends</button>
     <button class="tab-btn" onclick="switchTab('insights',this)">AI</button>
   </div>
 
   <!-- ══ TODAY TAB ══ -->
-  <div class="tab-pane active" id="tab-today">
+  <div class="tab-pane" id="tab-today">
 
     <!-- EATING WINDOW — compact -->
     <div class="card">
@@ -382,7 +382,7 @@ canvas{width:100%!important;height:120px!important}
   </div>
 
   <!-- ══ MORNING TAB ══ -->
-  <div class="tab-pane" id="tab-morning">
+  <div class="tab-pane active" id="tab-morning">
     <div class="card">
       <div class="card-hd">
         <div class="card-icon" style="background:#a78bfa15">📱</div>
@@ -394,13 +394,11 @@ canvas{width:100%!important;height:120px!important}
       <div class="card-body">
         <div class="upload-zone" id="upload-zone" onclick="document.getElementById('whoop-img-input').click()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="this.classList.remove('drag')">
           <div class="upload-zone-icon">📸</div>
-          <div class="upload-zone-text">Tap to upload Whoop screenshot</div>
-          <div class="upload-zone-sub">Morning recovery screen · sleep stages screen</div>
+          <div class="upload-zone-text">Tap to upload Whoop screenshots</div>
+          <div class="upload-zone-sub">Select 1 or 2 screens at once · recovery + sleep stages</div>
         </div>
-        <input type="file" id="whoop-img-input" accept="image/*" style="display:none" onchange="handleWhoopUpload(this.files[0])">
-        <div class="upload-preview" id="upload-preview">
-          <img id="preview-img" src="" alt="Whoop screenshot">
-        </div>
+        <input type="file" id="whoop-img-input" accept="image/*" multiple style="display:none" onchange="handleWhoopUpload(this.files)">
+        <div class="upload-preview" id="upload-preview" style="display:none;gap:8px;flex-wrap:wrap"></div>
 
         <div id="extracted-block" style="display:none">
           <div class="section-label" style="margin-top:16px">Extracted Metrics — review & confirm</div>
@@ -441,7 +439,7 @@ canvas{width:100%!important;height:120px!important}
           <div style="font-family:var(--mono);font-size:11px;margin-top:8px">Reading your Whoop data…</div>
         </div>
 
-        <div class="note note-purple" style="margin-top:12px">☀️ Do this right after checking your Whoop app each morning. Upload the recovery or sleep screen — AI reads HRV, recovery %, sleep stages.</div>
+        <div class="note note-purple" style="margin-top:12px">☀️ Select both your recovery screen and sleep stages screen at once — AI reads all metrics from both images together.</div>
       </div>
     </div>
   </div>
@@ -754,70 +752,83 @@ window.saveNightLog = async function() {
 window.handleDragOver = function(e) { e.preventDefault(); e.currentTarget.classList.add('drag'); };
 window.handleDrop = function(e) {
   e.preventDefault(); e.currentTarget.classList.remove('drag');
-  const file = e.dataTransfer.files[0];
-  if (file) handleWhoopUpload(file);
+  if (e.dataTransfer.files.length) handleWhoopUpload(e.dataTransfer.files);
 };
 
-window.handleWhoopUpload = async function(file) {
-  if (!file) return;
+window.handleWhoopUpload = async function(files) {
+  if (!files || !files.length) return;
   const preview = document.getElementById('upload-preview');
-  const previewImg = document.getElementById('preview-img');
   const loading = document.getElementById('extract-loading');
   const extracted = document.getElementById('extracted-block');
 
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const b64 = e.target.result.split(',')[1];
-    const mediaType = file.type || 'image/jpeg';
+  // Show previews for all selected images
+  preview.style.display = 'flex';
+  preview.innerHTML = '';
+  document.getElementById('upload-zone').style.display = 'none';
+  loading.style.display = 'block';
+  extracted.style.display = 'none';
 
-    previewImg.src = e.target.result;
-    preview.style.display = 'block';
-    loading.style.display = 'block';
-    extracted.style.display = 'none';
-    document.getElementById('upload-zone').style.display = 'none';
+  // Read all files as base64
+  const readFile = (file) => new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = (e) => res({ b64: e.target.result.split(',')[1], mediaType: file.type || 'image/jpeg', dataURL: e.target.result });
+    reader.readAsDataURL(file);
+  });
 
-    try {
-      const resp = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: { type: 'base64', media_type: mediaType, data: b64 }
-              },
-              {
-                type: 'text',
-                text: 'This is a Whoop fitness tracker screenshot. Extract the following metrics and respond ONLY with a JSON object, no markdown, no explanation:\n{"hrv": <number or null>, "recovery": <number or null>, "deep": <number or null, this is deep sleep percentage>, "totalSleep": "<string like 8:22 or null>"}\nIf you cannot find a value, use null. HRV is in milliseconds. Recovery is a percentage 0-100. Deep sleep percentage is usually shown as SWS%. Total sleep is shown as hours:minutes.'
-              }
-            ]
-          }]
-        })
-      });
+  const images = await Promise.all(Array.from(files).map(readFile));
 
-      const data = await resp.json();
-      const text = data.content.map(c => c.text || '').join('');
-      const clean = text.replace(/```json|```/g,'').trim();
-      const parsed = JSON.parse(clean);
+  // Show thumbnails
+  images.forEach(img => {
+    const el = document.createElement('img');
+    el.src = img.dataURL;
+    el.style.cssText = 'width:calc(50% - 4px);border-radius:8px;border:1px solid var(--border);max-height:160px;object-fit:cover';
+    preview.appendChild(el);
+  });
 
-      document.getElementById('ex-hrv').value = parsed.hrv || '';
-      document.getElementById('ex-recovery').value = parsed.recovery || '';
-      document.getElementById('ex-deep').value = parsed.deep || '';
-      document.getElementById('ex-sleep').value = parsed.totalSleep || '';
+  // Build content array — one image block per file
+  const content = [];
+  images.forEach(img => {
+    content.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.b64 } });
+  });
+  content.push({
+    type: 'text',
+    text: `These are ${images.length} Whoop fitness tracker screenshot(s). Extract ALL of the following metrics across all images and respond ONLY with a JSON object, no markdown, no explanation:
+{"hrv": <number or null>, "recovery": <number or null>, "deep": <number or null>, "totalSleep": "<string like 8:22 or null>"}
+- HRV = Heart Rate Variability in milliseconds
+- recovery = Recovery percentage 0-100 (the big number on the recovery screen)
+- deep = Deep/SWS sleep percentage (from sleep stages screen, shown as SWS%)
+- totalSleep = Total sleep shown as hours:minutes (e.g. "8:22")
+Use null for any value not found across any of the images.`
+  });
 
-      loading.style.display = 'none';
-      extracted.style.display = 'block';
-    } catch(err) {
-      loading.style.display = 'none';
-      extracted.style.display = 'block';
-      showToast('Could not auto-extract — fill in manually','err');
-    }
-  };
-  reader.readAsDataURL(file);
+  try {
+    const resp = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{ role: 'user', content }]
+      })
+    });
+
+    const data = await resp.json();
+    const text = data.content.map(c => c.text || '').join('');
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+
+    document.getElementById('ex-hrv').value = parsed.hrv || '';
+    document.getElementById('ex-recovery').value = parsed.recovery || '';
+    document.getElementById('ex-deep').value = parsed.deep || '';
+    document.getElementById('ex-sleep').value = parsed.totalSleep || '';
+
+    loading.style.display = 'none';
+    extracted.style.display = 'block';
+  } catch(err) {
+    loading.style.display = 'none';
+    extracted.style.display = 'block';
+    showToast('Could not auto-extract — fill in manually','err');
+  }
 };
 
 // ── MORNING LOG ──
@@ -850,7 +861,9 @@ window.saveMorningLog = async function() {
   // Reset UI
   document.getElementById('upload-zone').style.display = 'block';
   document.getElementById('upload-preview').style.display = 'none';
+  document.getElementById('upload-preview').innerHTML = '';
   document.getElementById('extracted-block').style.display = 'none';
+  document.getElementById('whoop-img-input').value = '';
   recoveryFeelVal = 0;
   document.querySelectorAll('#recovery-stars .star').forEach(s => s.classList.remove('on'));
 };
