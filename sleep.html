@@ -740,23 +740,6 @@ window.setCutoff = function(val) {
   });
   saveEatingData();
 };
-  // If logging for today, use current time. If back-filling, just mark as tapped
-  const now = new Date();
-  const timeStr = ACTIVE_LOG_DATE === TODAY_KEY
-    ? now.toTimeString().slice(0,5)
-    : (type === 'first' ? '08:00' : '18:00'); // sensible defaults for backfill
-  if (type === 'first') {
-    todayEating.first = timeStr;
-    document.getElementById('btn-first-meal').classList.add('logged');
-    document.getElementById('manual-first-meal').value = timeStr;
-  } else {
-    todayEating.last = timeStr;
-    document.getElementById('btn-last-meal').classList.add('logged');
-    document.getElementById('manual-last-meal').value = timeStr;
-  }
-  saveEatingData();
-  updateEatingUI();
-};
 
 async function saveEatingData() {
   await setDoc(doc(db, 'sleep_eating', ACTIVE_LOG_DATE), {
@@ -769,62 +752,55 @@ async function saveEatingData() {
 }
 
 function updateEatingUI() {
-  const firstEl = document.getElementById('val-first-meal');
-  const lastEl = document.getElementById('val-last-meal');
   const fillEl = document.getElementById('eating-fill');
   const statusEl = document.getElementById('eating-status');
   const durationEl = document.getElementById('eating-duration-label');
-
-  if (todayEating.first) {
-    firstEl.textContent = fmt12(todayEating.first);
-    firstEl.classList.remove('empty');
-    document.getElementById('btn-first-meal').classList.add('logged');
-  }
-  if (todayEating.last) {
-    lastEl.textContent = fmt12(todayEating.last);
-    lastEl.classList.remove('empty');
-    document.getElementById('btn-last-meal').classList.add('logged');
-  }
+  if (!fillEl) return;
 
   if (todayEating.first && todayEating.last) {
     const startMins = timeToMins(todayEating.first);
-    const endMins = timeToMins(todayEating.last);
-    const dayStart = timeToMins('06:00');
-    const dayEnd = timeToMins('24:00');
-    const dayRange = dayEnd - dayStart;
-    const left = ((startMins - dayStart) / dayRange) * 100;
+    const endMins   = timeToMins(todayEating.last);
+    const dayStart  = timeToMins('06:00');
+    const dayEnd    = timeToMins('24:00');
+    const dayRange  = dayEnd - dayStart;
+    const left  = ((startMins - dayStart) / dayRange) * 100;
     const width = ((endMins - startMins) / dayRange) * 100;
-    fillEl.style.left = Math.max(0,left) + '%';
-    fillEl.style.width = Math.max(0,width) + '%';
+    fillEl.style.left  = Math.max(0, left)  + '%';
+    fillEl.style.width = Math.max(0, width) + '%';
 
     const cutoffMins = timeToMins('20:00');
-    const cutoffPct = ((cutoffMins - dayStart) / dayRange) * 100;
+    const cutoffPct  = ((cutoffMins - dayStart) / dayRange) * 100;
     document.getElementById('eating-cutoff').style.left = cutoffPct + '%';
 
     const duration = endMins - startMins;
-    const hrs = Math.floor(duration/60);
+    const hrs  = Math.floor(duration / 60);
     const mins = duration % 60;
-    durationEl.textContent = hrs+'h '+mins+'m window';
+    if (durationEl) durationEl.textContent = hrs + 'h ' + mins + 'm window';
 
-    if (endMins <= cutoffMins) {
-      fillEl.classList.remove('warn');
-      statusEl.textContent = '✅ Beat your 8 PM cutoff!';
-      statusEl.className = 'eating-status ok';
-    } else {
-      fillEl.classList.add('warn');
-      const over = endMins - cutoffMins;
-      statusEl.textContent = `⚠️ ${Math.floor(over/60)}h ${over%60}m past cutoff`;
-      statusEl.className = 'eating-status warn';
+    if (statusEl) {
+      if (endMins <= cutoffMins) {
+        fillEl.classList.remove('warn');
+        statusEl.textContent = '✅ Beat 8 PM';
+        statusEl.style.color = 'var(--accent2)';
+      } else {
+        fillEl.classList.add('warn');
+        const over = endMins - cutoffMins;
+        statusEl.textContent = `⚠️ ${Math.floor(over/60)}h ${over%60}m late`;
+        statusEl.style.color = 'var(--warn)';
+      }
     }
   } else if (todayEating.first) {
     const startMins = timeToMins(todayEating.first);
-    const dayStart = timeToMins('06:00');
-    const dayRange = timeToMins('24:00') - dayStart;
+    const dayStart  = timeToMins('06:00');
+    const dayRange  = timeToMins('24:00') - dayStart;
     const left = ((startMins - dayStart) / dayRange) * 100;
-    fillEl.style.left = Math.max(0,left) + '%';
-    fillEl.style.width = '4%';
-    statusEl.textContent = 'Log last meal when done eating';
-    statusEl.className = 'eating-status';
+    fillEl.style.left  = Math.max(0, left) + '%';
+    fillEl.style.width = '3%';
+    if (statusEl) { statusEl.textContent = ''; }
+  } else {
+    fillEl.style.left  = '0%';
+    fillEl.style.width = '0%';
+    if (statusEl) statusEl.textContent = '';
   }
 }
 
