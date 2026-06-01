@@ -394,12 +394,24 @@ canvas{width:100%!important;height:120px!important}
 
   <!-- ══ MORNING TAB ══ -->
   <div class="tab-pane active" id="tab-morning">
+
+    <!-- DATE SELECTOR -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px">LOGGING FOR</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="shiftMorningDate(-1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
+        <input type="date" id="morning-date-picker" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 8px;outline:none;cursor:pointer" onchange="changeMorningDate(this.value)">
+        <button onclick="shiftMorningDate(1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
+        <button onclick="changeMorningDate(TODAY_KEY)" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:var(--mono);font-size:9px;padding:4px 8px;cursor:pointer" id="btn-morning-today">Today</button>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-hd">
         <div class="card-icon" style="background:#a78bfa15">📱</div>
         <div>
           <div class="card-title">Upload Whoop Screenshot</div>
-          <div class="card-sub">AI extracts your metrics automatically</div>
+          <div class="card-sub">AI extracts your metrics automatically · select 1 or 2 screens</div>
         </div>
       </div>
       <div class="card-body">
@@ -574,7 +586,8 @@ let allLogs = [];
 let hrvChart = null;
 let deepChart = null;
 const TODAY_KEY = new Date().toISOString().slice(0,10);
-let ACTIVE_LOG_DATE = TODAY_KEY; // tracks which date the Today tab is editing
+let ACTIVE_LOG_DATE = TODAY_KEY;
+let ACTIVE_MORNING_DATE = TODAY_KEY;
 
 // ── AUTH ──
 window.signInWithGoogle = async function() {
@@ -597,14 +610,44 @@ onAuthStateChanged(auth, user => {
 // ── INIT ──
 async function init() {
   renderHeroDate();
-  // Set date picker to today
   const dp = document.getElementById('log-date-picker');
   if (dp) { dp.value = TODAY_KEY; dp.max = TODAY_KEY; }
+  const mp = document.getElementById('morning-date-picker');
+  if (mp) { mp.value = TODAY_KEY; mp.max = TODAY_KEY; }
   await loadTodayData();
   await loadAllLogs();
   renderTrends();
   renderStatStrip();
 }
+
+// ── MORNING DATE NAVIGATION ──
+window.changeMorningDate = function(dateStr) {
+  ACTIVE_MORNING_DATE = dateStr;
+  const mp = document.getElementById('morning-date-picker');
+  if (mp) mp.value = dateStr;
+  const todayBtn = document.getElementById('btn-morning-today');
+  if (todayBtn) todayBtn.style.opacity = dateStr === TODAY_KEY ? '0.3' : '1';
+  // Reset upload UI for the new date
+  document.getElementById('upload-zone').style.display = 'block';
+  document.getElementById('upload-preview').style.display = 'none';
+  document.getElementById('upload-preview').innerHTML = '';
+  document.getElementById('extracted-block').style.display = 'none';
+  document.getElementById('whoop-img-input').value = '';
+  recoveryFeelVal = 0;
+  document.querySelectorAll('#recovery-stars .star').forEach(s => s.classList.remove('on'));
+  document.getElementById('ex-hrv').value = '';
+  document.getElementById('ex-recovery').value = '';
+  document.getElementById('ex-deep').value = '';
+  document.getElementById('ex-sleep').value = '';
+};
+
+window.shiftMorningDate = function(dir) {
+  const d = new Date(ACTIVE_MORNING_DATE + 'T12:00:00');
+  d.setDate(d.getDate() + dir);
+  const newDate = d.toISOString().slice(0,10);
+  if (newDate > TODAY_KEY) return;
+  changeMorningDate(newDate);
+};
 
 // ── DATE NAVIGATION ──
 window.changeLogDate = async function(dateStr) {
@@ -948,9 +991,8 @@ window.saveMorningLog = async function() {
 
   if (!hrv && !recovery) { showToast('Please enter at least HRV or Recovery','err'); return; }
 
-  const logDate = new Date().toISOString().slice(0,10);
-  await setDoc(doc(db, 'sleep_morning', logDate), {
-    date: logDate,
+  await setDoc(doc(db, 'sleep_morning', ACTIVE_MORNING_DATE), {
+    date: ACTIVE_MORNING_DATE,
     hrv, recovery, deep, totalSleep,
     recoveryFeel: recoveryFeelVal || null,
     savedAt: new Date().toISOString()
