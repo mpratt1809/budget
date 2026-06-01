@@ -785,6 +785,7 @@ window.setCutoff = function(val) {
 };
 
 async function saveEatingData() {
+  if (!DB_READY) return;
   await setDoc(doc(db, 'sleep_eating', ACTIVE_LOG_DATE), {
     date: ACTIVE_LOG_DATE,
     firstMeal: todayEating.first,
@@ -990,27 +991,39 @@ window.saveMorningLog = async function() {
   const totalSleep = document.getElementById('ex-sleep').value || null;
 
   if (!hrv && !recovery) { showToast('Please enter at least HRV or Recovery','err'); return; }
+  if (!DB_READY) { showToast('Still connecting — try again in a moment','err'); return; }
 
-  await setDoc(doc(db, 'sleep_morning', ACTIVE_MORNING_DATE), {
-    date: ACTIVE_MORNING_DATE,
-    hrv, recovery, deep, totalSleep,
-    recoveryFeel: recoveryFeelVal || null,
-    savedAt: new Date().toISOString()
-  });
+  const btn = document.querySelector('[onclick="saveMorningLog()"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Saving…'; }
 
-  await loadAllLogs();
-  renderStatStrip();
-  renderTrends();
-  showToast('Morning log saved ✓','ok');
+  try {
+    await setDoc(doc(db, 'sleep_morning', ACTIVE_MORNING_DATE), {
+      date: ACTIVE_MORNING_DATE,
+      hrv, recovery, deep, totalSleep,
+      recoveryFeel: recoveryFeelVal || null,
+      savedAt: new Date().toISOString()
+    });
 
-  // Reset UI
-  document.getElementById('upload-zone').style.display = 'block';
-  document.getElementById('upload-preview').style.display = 'none';
-  document.getElementById('upload-preview').innerHTML = '';
-  document.getElementById('extracted-block').style.display = 'none';
-  document.getElementById('whoop-img-input').value = '';
-  recoveryFeelVal = 0;
-  document.querySelectorAll('#recovery-stars .star').forEach(s => s.classList.remove('on'));
+    await loadAllLogs();
+    renderStatStrip();
+    renderTrends();
+    showToast('Saved for ' + ACTIVE_MORNING_DATE + ' ✓', 'ok');
+
+    // Reset UI
+    document.getElementById('upload-zone').style.display = 'block';
+    document.getElementById('upload-preview').style.display = 'none';
+    document.getElementById('upload-preview').innerHTML = '';
+    document.getElementById('extracted-block').style.display = 'none';
+    document.getElementById('whoop-img-input').value = '';
+    recoveryFeelVal = 0;
+    document.querySelectorAll('#recovery-stars .star').forEach(s => s.classList.remove('on'));
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm & Save Morning Log ✓'; }
+
+  } catch(e) {
+    console.error('saveMorningLog error:', e);
+    showToast('Save failed: ' + e.message, 'err');
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm & Save Morning Log ✓'; }
+  }
 };
 
 // ── TRENDS ──
