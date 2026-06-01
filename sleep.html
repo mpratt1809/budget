@@ -274,48 +274,59 @@ canvas{width:100%!important;height:120px!important}
   <!-- ══ TODAY TAB ══ -->
   <div class="tab-pane" id="tab-today">
 
-    <!-- EATING WINDOW — compact -->
+    <!-- DATE SELECTOR -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px">LOGGING FOR</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="shiftLogDate(-1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
+        <input type="date" id="log-date-picker" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 8px;outline:none;cursor:pointer" onchange="changeLogDate(this.value)">
+        <button onclick="shiftLogDate(1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
+        <button onclick="changeLogDate(TODAY_KEY)" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:var(--mono);font-size:9px;padding:4px 8px;cursor:pointer" id="btn-today-jump">Today</button>
+      </div>
+    </div>
+
+    <!-- EATING WINDOW — simplified -->
     <div class="card">
       <div class="card-hd" style="padding:10px 14px">
         <div class="card-icon" style="background:#4fc38a15;width:24px;height:24px;font-size:11px">🍽️</div>
         <div style="flex:1">
           <div class="card-title" style="font-size:12px">Eating Window <span style="font-family:var(--mono);font-size:9px;color:var(--muted);font-weight:400;margin-left:4px">goal: last bite by 8 PM</span></div>
         </div>
-        <div class="eating-status" id="eating-status" style="font-size:10px;margin:0"></div>
+        <div id="eating-status" style="font-size:11px;font-family:var(--mono)"></div>
       </div>
-      <div style="padding:8px 14px 12px">
-        <!-- Bar -->
+      <div style="padding:10px 14px 14px">
+
+        <!-- Visual bar -->
         <div class="eating-track" style="margin-bottom:4px">
           <div class="eating-fill" id="eating-fill" style="left:0%;width:0%"></div>
           <div class="eating-cutoff-line" id="eating-cutoff" style="left:75%"></div>
         </div>
-        <div class="eating-times" style="font-size:9px;margin-bottom:10px">
+        <div class="eating-times" style="font-size:9px;margin-bottom:12px">
           <span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
         </div>
-        <!-- Meal log buttons side by side -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <button class="log-time-btn" id="btn-first-meal" onclick="logMealTime('first')" style="margin:0;padding:10px 10px">
-            <div class="log-time-left">
-              <div class="log-time-icon" style="font-size:14px">🌅</div>
-              <div>
-                <div class="log-time-name" style="font-size:12px">First Meal</div>
-                <div class="log-time-sub">tap to log</div>
-              </div>
-            </div>
-            <div class="log-time-val empty" id="val-first-meal" style="font-size:11px">—</div>
-          </button>
-          <button class="log-time-btn" id="btn-last-meal" onclick="logMealTime('last')" style="margin:0;padding:10px 10px">
-            <div class="log-time-left">
-              <div class="log-time-icon" style="font-size:14px">🌙</div>
-              <div>
-                <div class="log-time-name" style="font-size:12px">Last Meal</div>
-                <div class="log-time-sub">tap to log</div>
-              </div>
-            </div>
-            <div class="log-time-val empty" id="val-last-meal" style="font-size:11px">—</div>
-          </button>
+
+        <!-- Time pickers -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px">🌅 First Meal</label>
+            <input type="time" id="manual-first-meal" style="width:100%;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 10px;outline:none;transition:border-color .2s" onchange="manualLogMeal('first',this.value)">
+          </div>
+          <div>
+            <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px">🌙 Last Meal / Snack</label>
+            <input type="time" id="manual-last-meal" style="width:100%;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 10px;outline:none;transition:border-color .2s" onchange="manualLogMeal('last',this.value)">
+          </div>
         </div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:6px" id="eating-duration-label"></div>
+
+        <!-- Cutoff outcome badge row -->
+        <div style="margin-bottom:4px">
+          <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">How'd you do on the 8 PM cutoff?</label>
+          <div style="display:flex;gap:8px">
+            <button class="cutoff-badge" data-val="beat" onclick="setCutoff('beat')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .2s">✅ Beat it</button>
+            <button class="cutoff-badge" data-val="close" onclick="setCutoff('close')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .2s">⚠️ Close</button>
+            <button class="cutoff-badge" data-val="missed" onclick="setCutoff('missed')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .2s">❌ Missed</button>
+          </div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:8px" id="eating-duration-label"></div>
       </div>
     </div>
 
@@ -332,18 +343,18 @@ canvas{width:100%!important;height:120px!important}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <div class="field" style="margin:0">
             <label class="field-label">Caffeine cutoff</label>
-            <input type="time" id="in-caffeine">
+            <input type="time" id="in-caffeine" onchange="autoSaveNightLog()">
           </div>
           <div class="field" style="margin:0">
             <label class="field-label">Target bedtime</label>
-            <input type="time" id="in-bedtime">
+            <input type="time" id="in-bedtime" onchange="autoSaveNightLog()">
           </div>
         </div>
         <!-- Row 2: wind-down + alcohol -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <div class="field" style="margin:0">
             <label class="field-label">Wind-down</label>
-            <select id="in-winddown">
+            <select id="in-winddown" onchange="autoSaveNightLog()">
               <option value="">Select…</option>
               <option value="reading">📖 Reading</option>
               <option value="screen">📱 Screen</option>
@@ -355,7 +366,7 @@ canvas{width:100%!important;height:120px!important}
           </div>
           <div class="field" style="margin:0">
             <label class="field-label">Alcohol</label>
-            <select id="in-alcohol">
+            <select id="in-alcohol" onchange="autoSaveNightLog()">
               <option value="no">None 🚫</option>
               <option value="light">Light 🍷</option>
               <option value="moderate">Moderate 🍺</option>
@@ -563,6 +574,7 @@ let allLogs = [];
 let hrvChart = null;
 let deepChart = null;
 const TODAY_KEY = new Date().toISOString().slice(0,10);
+let ACTIVE_LOG_DATE = TODAY_KEY; // tracks which date the Today tab is editing
 
 // ── AUTH ──
 window.signInWithGoogle = async function() {
@@ -585,11 +597,88 @@ onAuthStateChanged(auth, user => {
 // ── INIT ──
 async function init() {
   renderHeroDate();
+  // Set date picker to today
+  const dp = document.getElementById('log-date-picker');
+  if (dp) { dp.value = TODAY_KEY; dp.max = TODAY_KEY; }
   await loadTodayData();
   await loadAllLogs();
   renderTrends();
   renderStatStrip();
 }
+
+// ── DATE NAVIGATION ──
+window.changeLogDate = async function(dateStr) {
+  ACTIVE_LOG_DATE = dateStr;
+  const dp = document.getElementById('log-date-picker');
+  if (dp) dp.value = dateStr;
+  // Show/hide Today button
+  const todayBtn = document.getElementById('btn-today-jump');
+  if (todayBtn) todayBtn.style.opacity = dateStr === TODAY_KEY ? '0.3' : '1';
+  // Reset eating UI
+  todayEating = { first: null, last: null };
+  document.getElementById('val-first-meal').textContent = '—';
+  document.getElementById('val-first-meal').className = 'log-time-val empty';
+  document.getElementById('val-last-meal').textContent = '—';
+  document.getElementById('val-last-meal').className = 'log-time-val empty';
+  document.getElementById('btn-first-meal').classList.remove('logged');
+  document.getElementById('btn-last-meal').classList.remove('logged');
+  document.getElementById('manual-first-meal').value = '';
+  document.getElementById('manual-last-meal').value = '';
+  // Load data for that date
+  const eSnap = await getDoc(doc(db, 'sleep_eating', dateStr));
+  if (eSnap.exists()) {
+    const d = eSnap.data();
+    todayEating.first = d.firstMeal || null;
+    todayEating.last  = d.lastMeal  || null;
+    if (todayEating.first) document.getElementById('manual-first-meal').value = todayEating.first;
+    if (todayEating.last)  document.getElementById('manual-last-meal').value  = todayEating.last;
+    if (d.cutoff) { cutoffVal = d.cutoff; setCutoff(d.cutoff); }
+    else { cutoffVal = null; document.querySelectorAll('.cutoff-badge').forEach(b => { b.style.background='var(--card2)'; b.style.borderColor='var(--border)'; b.style.color='var(--muted)'; }); }
+  } else {
+    cutoffVal = null;
+    document.querySelectorAll('.cutoff-badge').forEach(b => { b.style.background='var(--card2)'; b.style.borderColor='var(--border)'; b.style.color='var(--muted)'; });
+  }
+  updateEatingUI();
+  // Load night log for that date
+  const nSnap = await getDoc(doc(db, 'sleep_night', dateStr));
+  if (nSnap.exists()) {
+    const d = nSnap.data();
+    document.getElementById('in-caffeine').value  = d.caffeine  || '';
+    document.getElementById('in-winddown').value  = d.winddown  || '';
+    document.getElementById('in-alcohol').value   = d.alcohol   || 'no';
+    document.getElementById('in-bedtime').value   = d.bedtime   || '';
+    stressVal = d.stress || 0;
+    document.querySelectorAll('#stress-stars .star').forEach((s,i) => s.classList.toggle('on', i === stressVal - 1));
+  } else {
+    document.getElementById('in-caffeine').value = '';
+    document.getElementById('in-winddown').value = '';
+    document.getElementById('in-alcohol').value  = 'no';
+    document.getElementById('in-bedtime').value  = '';
+    stressVal = 0;
+    document.querySelectorAll('#stress-stars .star').forEach(s => s.classList.remove('on'));
+  }
+};
+
+window.shiftLogDate = function(dir) {
+  const d = new Date(ACTIVE_LOG_DATE + 'T12:00:00');
+  d.setDate(d.getDate() + dir);
+  const newDate = d.toISOString().slice(0,10);
+  if (newDate > TODAY_KEY) return; // can't go into future
+  changeLogDate(newDate);
+};
+
+window.manualLogMeal = function(type, timeVal) {
+  if (!timeVal) return;
+  if (type === 'first') {
+    todayEating.first = timeVal;
+    document.getElementById('btn-first-meal').classList.add('logged');
+  } else {
+    todayEating.last = timeVal;
+    document.getElementById('btn-last-meal').classList.add('logged');
+  }
+  saveEatingData();
+  updateEatingUI();
+};
 
 function renderHeroDate() {
   document.getElementById('hero-date').textContent =
@@ -598,21 +687,26 @@ function renderHeroDate() {
 
 // ── TODAY DATA ──
 async function loadTodayData() {
-  const snap = await getDoc(doc(db, 'sleep_eating', TODAY_KEY));
+  const dp = document.getElementById('log-date-picker');
+  if (dp) dp.value = ACTIVE_LOG_DATE;
+  const snap = await getDoc(doc(db, 'sleep_eating', ACTIVE_LOG_DATE));
   if (snap.exists()) {
     const d = snap.data();
     todayEating.first = d.firstMeal || null;
-    todayEating.last = d.lastMeal || null;
+    todayEating.last  = d.lastMeal  || null;
+    if (todayEating.first) document.getElementById('manual-first-meal').value = todayEating.first;
+    if (todayEating.last)  document.getElementById('manual-last-meal').value  = todayEating.last;
+    if (d.cutoff) { cutoffVal = d.cutoff; setCutoff(d.cutoff); }
     updateEatingUI();
   }
-  const nightSnap = await getDoc(doc(db, 'sleep_night', TODAY_KEY));
+  const nightSnap = await getDoc(doc(db, 'sleep_night', ACTIVE_LOG_DATE));
   if (nightSnap.exists()) {
     const d = nightSnap.data();
     if (d.caffeine) document.getElementById('in-caffeine').value = d.caffeine;
     if (d.winddown) document.getElementById('in-winddown').value = d.winddown;
-    if (d.stress) setStress(d.stress);
-    if (d.alcohol) document.getElementById('in-alcohol').value = d.alcohol;
-    if (d.bedtime) document.getElementById('in-bedtime').value = d.bedtime;
+    if (d.stress)   { stressVal = d.stress; document.querySelectorAll('#stress-stars .star').forEach((s,i) => s.classList.toggle('on', i === stressVal - 1)); }
+    if (d.alcohol)  document.getElementById('in-alcohol').value  = d.alcohol;
+    if (d.bedtime)  document.getElementById('in-bedtime').value  = d.bedtime;
   }
 }
 
@@ -634,25 +728,42 @@ function renderStatStrip() {
 }
 
 // ── EATING WINDOW ──
-window.logMealTime = function(type) {
+let cutoffVal = null;
+
+window.setCutoff = function(val) {
+  cutoffVal = val;
+  document.querySelectorAll('.cutoff-badge').forEach(b => {
+    const isActive = b.dataset.val === val;
+    b.style.background = isActive ? (val === 'beat' ? '#4fc38a20' : val === 'close' ? '#f0a04820' : '#e0555520') : 'var(--card2)';
+    b.style.borderColor = isActive ? (val === 'beat' ? 'var(--accent2)' : val === 'close' ? 'var(--warn)' : 'var(--danger)') : 'var(--border)';
+    b.style.color = isActive ? (val === 'beat' ? 'var(--accent2)' : val === 'close' ? 'var(--warn)' : 'var(--danger)') : 'var(--muted)';
+  });
+  saveEatingData();
+};
+  // If logging for today, use current time. If back-filling, just mark as tapped
   const now = new Date();
-  const timeStr = now.toTimeString().slice(0,5);
+  const timeStr = ACTIVE_LOG_DATE === TODAY_KEY
+    ? now.toTimeString().slice(0,5)
+    : (type === 'first' ? '08:00' : '18:00'); // sensible defaults for backfill
   if (type === 'first') {
     todayEating.first = timeStr;
     document.getElementById('btn-first-meal').classList.add('logged');
+    document.getElementById('manual-first-meal').value = timeStr;
   } else {
     todayEating.last = timeStr;
     document.getElementById('btn-last-meal').classList.add('logged');
+    document.getElementById('manual-last-meal').value = timeStr;
   }
   saveEatingData();
   updateEatingUI();
 };
 
 async function saveEatingData() {
-  await setDoc(doc(db, 'sleep_eating', TODAY_KEY), {
-    date: TODAY_KEY,
+  await setDoc(doc(db, 'sleep_eating', ACTIVE_LOG_DATE), {
+    date: ACTIVE_LOG_DATE,
     firstMeal: todayEating.first,
     lastMeal: todayEating.last,
+    cutoff: cutoffVal,
     updatedAt: new Date().toISOString()
   });
 }
@@ -721,6 +832,22 @@ function updateEatingUI() {
 window.setStress = function(v) {
   stressVal = v;
   document.querySelectorAll('#stress-stars .star').forEach((s,i) => s.classList.toggle('on', i === v - 1));
+  autoSaveNightLog();
+};
+
+// Auto-save on any field change — silent, no toast
+window.autoSaveNightLog = async function() {
+  try {
+    await setDoc(doc(db, 'sleep_night', ACTIVE_LOG_DATE), {
+      date: ACTIVE_LOG_DATE,
+      caffeine: document.getElementById('in-caffeine').value || null,
+      winddown: document.getElementById('in-winddown').value || null,
+      stress: stressVal || null,
+      alcohol: document.getElementById('in-alcohol').value || null,
+      bedtime: document.getElementById('in-bedtime').value || null,
+      savedAt: new Date().toISOString()
+    });
+  } catch(e) { /* silent fail */ }
 };
 
 window.saveNightLog = async function() {
@@ -728,8 +855,8 @@ window.saveNightLog = async function() {
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> Saving…';
   try {
-    await setDoc(doc(db, 'sleep_night', TODAY_KEY), {
-      date: TODAY_KEY,
+    await setDoc(doc(db, 'sleep_night', ACTIVE_LOG_DATE), {
+      date: ACTIVE_LOG_DATE,
       caffeine: document.getElementById('in-caffeine').value || null,
       winddown: document.getElementById('in-winddown').value || null,
       stress: stressVal || null,
@@ -737,7 +864,7 @@ window.saveNightLog = async function() {
       bedtime: document.getElementById('in-bedtime').value || null,
       savedAt: new Date().toISOString()
     });
-    showToast('Tonight logged ✓','ok');
+    showToast('Log saved ✓','ok');
     btn.innerHTML = 'Saved ✓';
     btn.style.background = 'var(--accent2)';
     btn.style.color = '#0a0a0d';
@@ -954,14 +1081,17 @@ async function renderStreaks(sorted) {
     const snap = await getDoc(doc(db,'sleep_eating',d));
     if (snap.exists()) {
       const data = snap.data();
-      const last = data.lastMeal;
-      if (last) {
-        const hit = timeToMins(last) <= timeToMins('20:00');
-        if (hit) cutoffHits++;
-        cutoffDots.push(hit ? 'hit' : 'miss');
+      // Use explicit cutoff badge if set, otherwise derive from last meal time
+      let hit = false;
+      if (data.cutoff) {
+        hit = data.cutoff === 'beat';
+      } else if (data.lastMeal) {
+        hit = timeToMins(data.lastMeal) <= timeToMins('20:00');
       } else {
-        cutoffDots.push('empty');
+        cutoffDots.push('empty'); continue;
       }
+      if (hit) cutoffHits++;
+      cutoffDots.push(hit ? 'hit' : 'miss');
     } else {
       cutoffDots.push('empty');
     }
