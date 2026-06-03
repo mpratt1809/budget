@@ -288,9 +288,9 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
     </div>
     <button class="nav-btn active" onclick="switchView('finance',this)" id="nav-finance">Finance</button>
     <button class="nav-btn" onclick="switchView('tasks',this)" id="nav-tasks">Tasks</button>
-    <button class="nav-btn" onclick="switchView('settings',this)" id="nav-settings">⚙ Settings</button>
     <button class="nav-btn" onclick="window.location='sleep.html'">Sleep</button>
-    <button class="nav-btn" onclick="signOutHub()" style="color:var(--muted);font-size:9px" title="Sign out">↪</button>
+    <button class="nav-btn" onclick="switchView('settings',this)" id="nav-settings">⚙</button>
+    <button class="nav-btn" onclick="signOutHub()" style="font-size:9px" title="Sign out">↪</button>
   </div>
 </header>
 
@@ -448,7 +448,15 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
       </div>
     </div>
     <div class="settings-section">
-      <div class="settings-section-title"><span>Debts</span><button class="btn btn-ghost btn-sm" onclick="openAddDebt()">+ Add</button></div>
+      <div class="settings-section-title">
+        <span>Debts</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;color:var(--muted);cursor:pointer">
+            <input type="checkbox" id="hide-paid-cb" onchange="toggleHidePaid(this)" style="accent-color:var(--accent)"> Hide paid / $0
+          </label>
+          <button class="btn btn-ghost btn-sm" onclick="openAddDebt()">+ Add</button>
+        </div>
+      </div>
       <div id="set-debt-list"></div>
     </div>
     <div class="settings-section">
@@ -560,6 +568,13 @@ let SETTINGS = {...DEFAULT_SETTINGS};
 let SPENDING = {};
 let TASKS = { boards:[], filter:'all', showDone:false };
 let DB_READY = false;
+let HIDE_PAID = false;
+
+window.toggleHidePaid = function(cb) {
+  HIDE_PAID = cb.checked;
+  renderSettingsDebts();
+  renderDebts();
+};
 
 async function initData() {
   setSyncStatus('connecting');
@@ -1095,7 +1110,10 @@ function renderSettingsIncome() {
 }
 function renderSettingsDebts() {
   const el = document.getElementById('set-debt-list'); if (!el) return;
-  el.innerHTML = DEBTS.map(d => `
+  const cb = document.getElementById('hide-paid-cb');
+  if (cb) cb.checked = HIDE_PAID;
+  const list = HIDE_PAID ? DEBTS.filter(d => d.status !== 'paid' && d.balance > 0) : DEBTS;
+  el.innerHTML = list.map(d => `
     <div class="debt-edit-row" data-id="${d.id}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div class="debt-edit-name">${d.name}</div>
