@@ -285,84 +285,41 @@ canvas{width:100%!important;height:120px!important}
       </div>
     </div>
 
-    <!-- EATING WINDOW — simplified -->
+    <!-- 8 PM CUTOFF — one tap -->
     <div class="card">
-      <div class="card-hd" style="padding:10px 14px">
-        <div class="card-icon" style="background:#4fc38a15;width:24px;height:24px;font-size:11px">🍽️</div>
+      <div class="card-hd" style="padding:12px 16px;background:var(--card2)">
+        <div class="card-icon" style="background:#4fc38a15;width:26px;height:26px;font-size:12px">🍽️</div>
         <div style="flex:1">
-          <div class="card-title" style="font-size:12px">Eating Window <span style="font-family:var(--mono);font-size:9px;color:var(--muted);font-weight:400;margin-left:4px">goal: last bite by 8 PM</span></div>
+          <div class="card-title" style="font-size:13px">8 PM Eating Cutoff</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px">Did you stop eating by 8 PM last night?</div>
         </div>
         <div id="eating-status" style="font-size:11px;font-family:var(--mono)"></div>
       </div>
-      <div style="padding:10px 14px 14px">
-
-        <!-- Visual bar -->
-        <div class="eating-track" style="margin-bottom:4px">
-          <div class="eating-fill" id="eating-fill" style="left:0%;width:0%"></div>
-          <div class="eating-cutoff-line" id="eating-cutoff" style="left:75%"></div>
+      <div style="padding:12px 16px 16px">
+        <div style="display:flex;gap:8px">
+          <button class="cutoff-badge" data-val="beat" onclick="setCutoff('beat')" style="flex:1;padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;transition:all .2s">✅ Beat it</button>
+          <button class="cutoff-badge" data-val="close" onclick="setCutoff('close')" style="flex:1;padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;transition:all .2s">⚠️ Close</button>
+          <button class="cutoff-badge" data-val="missed" onclick="setCutoff('missed')" style="flex:1;padding:12px 8px;border-radius:10px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;transition:all .2s">❌ Missed</button>
         </div>
-        <div class="eating-times" style="font-size:9px;margin-bottom:12px">
-          <span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span>
-        </div>
-
-        <!-- Time pickers -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div>
-            <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px">🌅 First Meal</label>
-            <input type="time" id="manual-first-meal" style="width:100%;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 10px;outline:none;transition:border-color .2s" onchange="manualLogMeal('first',this.value)">
-          </div>
-          <div>
-            <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px">🌙 Last Meal / Snack</label>
-            <input type="time" id="manual-last-meal" style="width:100%;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:14px;padding:8px 10px;outline:none;transition:border-color .2s" onchange="manualLogMeal('last',this.value)">
-          </div>
-        </div>
-
-        <!-- Cutoff outcome badge row -->
-        <div style="margin-bottom:4px">
-          <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">How'd you do on the 8 PM cutoff?</label>
-          <div style="display:flex;gap:8px">
-            <button class="cutoff-badge" data-val="beat" onclick="setCutoff('beat')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .2s">✅ Beat it</button>
-            <button class="cutoff-badge" data-val="close" onclick="setCutoff('close')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .2s">⚠️ Close</button>
-            <button class="cutoff-badge" data-val="missed" onclick="setCutoff('missed')" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--muted);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .2s">❌ Missed</button>
-          </div>
-        </div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:8px" id="eating-duration-label"></div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:10px;line-height:1.6">Tap once and you're done. This is the only food data that matters for your HRV correlations.</div>
       </div>
     </div>
 
-    <!-- PRE-BED CHECKLIST — compact -->
+    <!-- PRE-BED LOG — 3 fields only -->
     <div class="card">
-      <div class="card-hd" style="padding:10px 14px">
-        <div class="card-icon" style="background:#7c6af715;width:24px;height:24px;font-size:11px">😴</div>
+      <div class="card-hd" style="padding:12px 16px;background:var(--card2)">
+        <div class="card-icon" style="background:#7c6af715;width:26px;height:26px;font-size:12px">😴</div>
         <div>
-          <div class="card-title" style="font-size:12px">Pre-Bed Log <span style="font-family:var(--mono);font-size:9px;color:var(--muted);font-weight:400;margin-left:4px">fill in before sleep</span></div>
+          <div class="card-title" style="font-size:13px">Last Night</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px">Fill in anytime — even the next morning</div>
         </div>
       </div>
-      <div style="padding:10px 14px 14px">
-        <!-- Row 1: caffeine + bedtime -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div style="padding:12px 16px 16px">
+        <!-- Bedtime + stress side by side -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div class="field" style="margin:0">
-            <label class="field-label">Caffeine cutoff</label>
-            <input type="time" id="in-caffeine" onchange="autoSaveNightLog()">
-          </div>
-          <div class="field" style="margin:0">
-            <label class="field-label">Target bedtime</label>
+            <label class="field-label">Bedtime</label>
             <input type="time" id="in-bedtime" onchange="autoSaveNightLog()">
-          </div>
-        </div>
-        <!-- Row 2: wind-down + alcohol -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div class="field" style="margin:0">
-            <label class="field-label">Wind-down</label>
-            <select id="in-winddown" onchange="autoSaveNightLog()">
-              <option value="">Select…</option>
-              <option value="reading">📖 Reading</option>
-              <option value="screen">📱 Screen</option>
-              <option value="meditation">🧘 Meditation</option>
-              <option value="shower">🚿 Shower/bath</option>
-              <option value="walk">🚶 Light walk</option>
-              <option value="nothing">💤 Straight to bed</option>
-            </select>
           </div>
           <div class="field" style="margin:0">
             <label class="field-label">Alcohol</label>
@@ -374,10 +331,10 @@ canvas{width:100%!important;height:120px!important}
             </select>
           </div>
         </div>
-        <!-- Stress -->
-        <div style="margin-bottom:10px">
-          <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px">Stress tonight</label>
-          <div class="star-row" id="stress-stars" style="gap:10px">
+        <!-- Stress — single row -->
+        <div style="margin-bottom:12px">
+          <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px">Stress level</label>
+          <div class="star-row" id="stress-stars" style="gap:12px">
             <span class="star" onclick="setStress(1)">😌</span>
             <span class="star" onclick="setStress(2)">🙂</span>
             <span class="star" onclick="setStress(3)">😐</span>
@@ -385,8 +342,8 @@ canvas{width:100%!important;height:120px!important}
             <span class="star" onclick="setStress(5)">😫</span>
           </div>
         </div>
-        <button class="btn btn-primary" onclick="saveNightLog()" id="btn-save-night" style="padding:9px 16px">
-          Save Tonight's Log ✓
+        <button class="btn btn-primary" onclick="saveNightLog()" id="btn-save-night" style="width:100%;padding:10px">
+          Save ✓
         </button>
       </div>
     </div>
@@ -688,15 +645,15 @@ window.changeLogDate = async function(dateStr) {
   const nSnap = await getDoc(doc(db, 'sleep_night', dateStr));
   if (nSnap.exists()) {
     const d = nSnap.data();
-    document.getElementById('in-caffeine').value  = d.caffeine  || '';
-    document.getElementById('in-winddown').value  = d.winddown  || '';
+    document.getElementById('in-caffeine') && (document.getElementById('in-caffeine').value = d.caffeine || '');
+    document.getElementById('in-winddown') && (document.getElementById('in-winddown').value = d.winddown || '');
     document.getElementById('in-alcohol').value   = d.alcohol   || 'no';
     document.getElementById('in-bedtime').value   = d.bedtime   || '';
     stressVal = d.stress || 0;
     document.querySelectorAll('#stress-stars .star').forEach((s,i) => s.classList.toggle('on', i === stressVal - 1));
   } else {
-    document.getElementById('in-caffeine').value = '';
-    document.getElementById('in-winddown').value = '';
+    document.getElementById('in-caffeine') && (document.getElementById('in-caffeine').value = '');
+    document.getElementById('in-winddown') && (document.getElementById('in-winddown').value = '');
     document.getElementById('in-alcohol').value  = 'no';
     document.getElementById('in-bedtime').value  = '';
     stressVal = 0;
@@ -747,8 +704,8 @@ async function loadTodayData() {
   const nightSnap = await getDoc(doc(db, 'sleep_night', ACTIVE_LOG_DATE));
   if (nightSnap.exists()) {
     const d = nightSnap.data();
-    if (d.caffeine) document.getElementById('in-caffeine').value = d.caffeine;
-    if (d.winddown) document.getElementById('in-winddown').value = d.winddown;
+    if (d.caffeine) document.getElementById('in-caffeine') && (document.getElementById('in-caffeine').value = d.caffeine);
+    if (d.winddown) document.getElementById('in-winddown') && (document.getElementById('in-winddown').value = d.winddown);
     if (d.stress)   { stressVal = d.stress; document.querySelectorAll('#stress-stars .star').forEach((s,i) => s.classList.toggle('on', i === stressVal - 1)); }
     if (d.alcohol)  document.getElementById('in-alcohol').value  = d.alcohol;
     if (d.bedtime)  document.getElementById('in-bedtime').value  = d.bedtime;
@@ -859,41 +816,45 @@ window.setStress = function(v) {
 
 // Auto-save on any field change — silent, no toast
 window.autoSaveNightLog = async function() {
+  if (!DB_READY) return;
   try {
     await setDoc(doc(db, 'sleep_night', ACTIVE_LOG_DATE), {
       date: ACTIVE_LOG_DATE,
-      caffeine: document.getElementById('in-caffeine').value || null,
-      winddown: document.getElementById('in-winddown').value || null,
       stress: stressVal || null,
-      alcohol: document.getElementById('in-alcohol').value || null,
-      bedtime: document.getElementById('in-bedtime').value || null,
+      alcohol: document.getElementById('in-alcohol')?.value || null,
+      bedtime: document.getElementById('in-bedtime')?.value || null,
       savedAt: new Date().toISOString()
     });
   } catch(e) { /* silent fail */ }
 };
 
 window.saveNightLog = async function() {
+  if (!DB_READY) { showToast('Still connecting — try again','err'); return; }
   const btn = document.getElementById('btn-save-night');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> Saving…';
   try {
     await setDoc(doc(db, 'sleep_night', ACTIVE_LOG_DATE), {
       date: ACTIVE_LOG_DATE,
-      caffeine: document.getElementById('in-caffeine').value || null,
-      winddown: document.getElementById('in-winddown').value || null,
       stress: stressVal || null,
-      alcohol: document.getElementById('in-alcohol').value,
-      bedtime: document.getElementById('in-bedtime').value || null,
+      alcohol: document.getElementById('in-alcohol')?.value || null,
+      bedtime: document.getElementById('in-bedtime')?.value || null,
       savedAt: new Date().toISOString()
     });
-    showToast('Log saved ✓','ok');
+    showToast('Saved ✓','ok');
     btn.innerHTML = 'Saved ✓';
     btn.style.background = 'var(--accent2)';
     btn.style.color = '#0a0a0d';
+    setTimeout(() => {
+      btn.innerHTML = 'Save ✓';
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.disabled = false;
+    }, 2000);
   } catch(e) {
-    showToast('Error saving','err');
+    showToast('Error: ' + e.message,'err');
     btn.disabled = false;
-    btn.innerHTML = 'Save Tonight\'s Log ✓';
+    btn.innerHTML = 'Save ✓';
   }
 };
 

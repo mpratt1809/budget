@@ -721,8 +721,27 @@ window.saveNewDebt = async function() {
   const min  = parseFloat(document.getElementById('dm-min').value)||0;
   const note = document.getElementById('dm-note').value.trim();
   if (!name || isNaN(bal)) { showToast('Name and balance required','err'); return; }
-  DEBTS.push({id:'d'+Date.now(),name,balance:bal,rate,min,monthly:min,status:'active',note});
-  await saveDebts(); closeDebtModal(); showToast('Debt added ✓','ok');
+  if (!DB_READY) { showToast('Still connecting — try again','err'); return; }
+  const saveBtn = document.querySelector('#debt-modal .btn-primary');
+  if (saveBtn) { saveBtn.textContent = 'Saving…'; saveBtn.disabled = true; }
+  try {
+    DEBTS.push({id:'d'+Date.now(),name,balance:bal,rate,min,monthly:min,status:'active',note});
+    await saveDebts();
+    closeDebtModal();
+    showToast('Debt added ✓','ok');
+    renderDebts();
+    refreshDebtStats();
+    renderSettingsDebts();
+    // Clear modal fields
+    ['dm-name','dm-note'].forEach(id => document.getElementById(id).value = '');
+    ['dm-balance','dm-rate','dm-min'].forEach(id => document.getElementById(id).value = '');
+  } catch(e) {
+    console.error('saveNewDebt error:', e);
+    showToast('Save failed: ' + e.message, 'err');
+    DEBTS.pop(); // remove the optimistic add
+  } finally {
+    if (saveBtn) { saveBtn.textContent = 'Save'; saveBtn.disabled = false; }
+  }
 };
 
 function renderInvestments() {
