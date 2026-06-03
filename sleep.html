@@ -228,7 +228,7 @@ canvas{width:100%!important;height:120px!important}
       <div class="sync-dot" id="sync-dot"></div>
       <span id="sync-label" style="font-family:var(--mono);font-size:10px;color:var(--muted)">connecting…</span>
     </div>
-    <a class="nav-btn" href="index.html">Finance</a>
+    <a class="nav-btn" href="index.html?view=finance">Finance</a>
     <a class="nav-btn" href="index.html?view=tasks">Tasks</a>
     <button class="nav-btn active">Sleep</button>
     <a class="nav-btn" href="index.html?view=settings" style="font-size:9px">⚙</a>
@@ -588,6 +588,7 @@ let deepChart = null;
 const TODAY_KEY = new Date().toISOString().slice(0,10);
 let ACTIVE_LOG_DATE = TODAY_KEY;
 let ACTIVE_MORNING_DATE = TODAY_KEY;
+let DB_READY = false;
 
 // ── AUTH ──
 window.signInWithGoogle = async function() {
@@ -599,6 +600,7 @@ onAuthStateChanged(auth, user => {
   if (user && user.email === ALLOWED_EMAIL) {
     document.getElementById('login-screen').classList.remove('show');
     document.getElementById('main-page').style.display = 'block';
+    DB_READY = true;
     setSyncStatus('live');
     init();
   } else {

@@ -1213,7 +1213,17 @@ document.querySelector('header').style.display = 'none';
 document.querySelector('.page').style.display = 'none';
 
 onAuthStateChanged(auth, user => {
-  if (user && user.email === ALLOWED_EMAIL) { showHub(); if (!DB_READY) initData(); }
+  if (user && user.email === ALLOWED_EMAIL) {
+    showHub();
+    if (!DB_READY) initData();
+    // Check for ?view= param from sleep.html nav links
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    if (view) {
+      const btn = document.getElementById('nav-' + view);
+      if (btn) switchView(view, btn);
+    }
+  }
   else showLogin();
 });
 </script>
