@@ -244,7 +244,7 @@ canvas{width:100%!important;height:120px!important}
   </div>
 
   <!-- STAT STRIP -->
-  <div class="stat-strip">
+  <div class="stat-strip" style="grid-template-columns:repeat(3,1fr)">
     <div class="stat">
       <div class="stat-label">HRV</div>
       <div class="stat-val purple" id="stat-hrv">—</div>
@@ -260,6 +260,14 @@ canvas{width:100%!important;height:120px!important}
     <div class="stat">
       <div class="stat-label">Sleep</div>
       <div class="stat-val warn" id="stat-sleep">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Resting HR</div>
+      <div class="stat-val" style="color:var(--warn)" id="stat-rhr">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Strain</div>
+      <div class="stat-val" style="color:var(--accent)" id="stat-strain">—</div>
     </div>
   </div>
 
@@ -368,14 +376,14 @@ canvas{width:100%!important;height:120px!important}
         <div class="card-icon" style="background:#a78bfa15">📱</div>
         <div>
           <div class="card-title">Upload Whoop Screenshot</div>
-          <div class="card-sub">AI extracts your metrics automatically · select 1 or 2 screens</div>
+          <div class="card-sub">AI extracts your metrics automatically · select up to 3 screens</div>
         </div>
       </div>
       <div class="card-body">
         <div class="upload-zone" id="upload-zone" onclick="document.getElementById('whoop-img-input').click()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="this.classList.remove('drag')">
           <div class="upload-zone-icon">📸</div>
           <div class="upload-zone-text">Tap to upload Whoop screenshots</div>
-          <div class="upload-zone-sub">Select 1 or 2 screens at once · recovery + sleep stages</div>
+          <div class="upload-zone-sub">Recovery detail · Sleep stages · Yesterday's home screen</div>
         </div>
         <input type="file" id="whoop-img-input" accept="image/*" multiple style="display:none" onchange="handleWhoopUpload(this.files)">
         <div class="upload-preview" id="upload-preview" style="display:none;gap:8px;flex-wrap:wrap"></div>
@@ -433,7 +441,7 @@ canvas{width:100%!important;height:120px!important}
               <span class="star" data-v="5" onclick="setRecoveryFeel(5)">⚡</span>
             </div>
           </div>
-          <button class="btn btn-green" onclick="saveMorningLog()" style="margin-top:8px">Confirm & Save Morning Log ✓</button>
+          <button class="btn btn-green" id="btn-save-morning" onclick="saveMorningLog()" style="margin-top:8px">Confirm & Save Morning Log ✓</button>
         </div>
 
         <div id="extract-loading" style="display:none;text-align:center;padding:20px;color:var(--muted)">
@@ -751,10 +759,20 @@ async function loadAllLogs() {
 function renderStatStrip() {
   if (!allLogs.length) return;
   const latest = allLogs[0];
-  document.getElementById('stat-hrv').textContent = latest.hrv ? latest.hrv+'ms' : '—';
-  document.getElementById('stat-recovery').textContent = latest.recovery ? latest.recovery+'%' : '—';
-  document.getElementById('stat-deep').textContent = latest.deep ? latest.deep+'%' : '—';
-  document.getElementById('stat-sleep').textContent = latest.totalSleep || '—';
+  document.getElementById('stat-hrv').textContent      = latest.hrv       ? latest.hrv+'ms'  : '—';
+  document.getElementById('stat-recovery').textContent = latest.recovery  ? latest.recovery+'%' : '—';
+  document.getElementById('stat-deep').textContent     = latest.deep      ? latest.deep+'%'  : '—';
+  document.getElementById('stat-sleep').textContent    = latest.totalSleep || '—';
+  document.getElementById('stat-rhr').textContent      = latest.restingHR ? latest.restingHR+'bpm' : '—';
+  // Strain is from yesterday — get the day before latest log
+  const yesterday = new Date(latest.date + 'T12:00:00');
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yKey = yesterday.toISOString().slice(0,10);
+  getDoc(doc(db, 'sleep_strain', yKey)).then(snap => {
+    if (snap.exists()) {
+      document.getElementById('stat-strain').textContent = snap.data().strain || '—';
+    }
+  }).catch(() => {});
 }
 
 // ── EATING WINDOW ──
@@ -1021,7 +1039,7 @@ window.saveMorningLog = async function() {
   if (!hrv && !recovery) { showToast('Please enter at least HRV or Recovery','err'); return; }
   if (!DB_READY) { showToast('Still connecting — try again in a moment','err'); return; }
 
-  const btn = document.querySelector('[onclick="saveMorningLog()"]');
+  const btn = document.getElementById('btn-save-morning');
   if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Saving…'; }
 
   try {
