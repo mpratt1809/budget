@@ -399,9 +399,31 @@ canvas{width:100%!important;height:120px!important}
               <div class="metric-box-label">Total Sleep</div>
               <input class="metric-box-val sleep" id="ex-sleep" placeholder="e.g. 8:22" type="text">
             </div>
+            <div class="metric-box">
+              <div class="metric-box-label">Resting HR</div>
+              <input class="metric-box-val" style="color:var(--warn)" id="ex-rhr" placeholder="—" type="number">
+            </div>
+            <div class="metric-box">
+              <div class="metric-box-label">Sleep %</div>
+              <input class="metric-box-val" style="color:var(--info)" id="ex-sleeppct" placeholder="—" type="number">
+            </div>
+            <div class="metric-box">
+              <div class="metric-box-label">Strain (yesterday)</div>
+              <input class="metric-box-val" style="color:var(--accent)" id="ex-strain" placeholder="—" type="number" step="0.1">
+            </div>
+            <div class="metric-box">
+              <div class="metric-box-label">Strain date</div>
+              <input class="metric-box-val" style="color:var(--muted);font-size:12px" id="ex-strain-date" placeholder="—" type="text">
+            </div>
           </div>
 
-          <div class="field">
+          <!-- Activities from yesterday's home screen -->
+          <div id="ex-activities-block" style="display:none;margin:10px 0">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Yesterday's Activities</div>
+            <div id="ex-activities-list" style="display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+
+          <div class="field" style="margin-top:10px">
             <label class="field-label">How do you feel this morning?</label>
             <div class="star-row" id="recovery-stars">
               <span class="star" data-v="1" onclick="setRecoveryFeel(1)">😵</span>
@@ -419,7 +441,7 @@ canvas{width:100%!important;height:120px!important}
           <div style="font-family:var(--mono);font-size:11px;margin-top:8px">Reading your Whoop data…</div>
         </div>
 
-        <div class="note note-purple" style="margin-top:12px">☀️ Select both your recovery screen and sleep stages screen at once — AI reads all metrics from both images together.</div>
+        <div class="note note-purple" style="margin-top:12px">☀️ Upload 3 screens: today's recovery detail + sleep stages + yesterday's home screen. AI reads the dates automatically.</div>
       </div>
     </div>
   </div>
@@ -598,6 +620,12 @@ window.changeMorningDate = function(dateStr) {
   document.getElementById('ex-recovery').value = '';
   document.getElementById('ex-deep').value = '';
   document.getElementById('ex-sleep').value = '';
+  document.getElementById('ex-rhr').value = '';
+  document.getElementById('ex-sleeppct').value = '';
+  document.getElementById('ex-strain').value = '';
+  document.getElementById('ex-strain-date').value = '';
+  document.getElementById('ex-activities-block').style.display = 'none';
+  document.getElementById('ex-activities-list').innerHTML = '';
 };
 
 window.shiftMorningDate = function(dir) {
@@ -902,13 +930,32 @@ window.handleWhoopUpload = async function(files) {
   });
   content.push({
     type: 'text',
-    text: `These are ${images.length} Whoop fitness tracker screenshot(s). Extract ALL of the following metrics across all images and respond ONLY with a JSON object, no markdown, no explanation:
-{"hrv": <number or null>, "recovery": <number or null>, "deep": <number or null>, "totalSleep": "<string like 8:22 or null>"}
-- HRV = Heart Rate Variability in milliseconds
-- recovery = Recovery percentage 0-100 (the big number on the recovery screen)
-- deep = Deep/SWS sleep percentage (from sleep stages screen, shown as SWS%)
-- totalSleep = Total sleep shown as hours:minutes (e.g. "8:22")
-Use null for any value not found across any of the images.`
+    text: `These are ${images.length} Whoop fitness tracker screenshot(s). Each screen may show a different date — read the date shown at the top of each screen carefully.
+
+Respond ONLY with a JSON object, no markdown, no explanation:
+{
+  "hrv": <number or null>,
+  "recovery": <number or null>,
+  "deep": <number or null>,
+  "totalSleep": "<h:mm string or null>",
+  "restingHR": <number or null>,
+  "sleepPct": <number or null>,
+  "strain": <number or null>,
+  "strainDate": "<YYYY-MM-DD or null>",
+  "activities": [{"name": "string", "strain": <number>}]
+}
+
+Rules:
+- hrv = Heart Rate Variability in milliseconds (from recovery detail screen)
+- recovery = Recovery % 0-100 (big ring number)
+- deep = SWS/Deep sleep % (from sleep stages screen)
+- totalSleep = Total sleep as h:mm (e.g. "7:04") from sleep stages or activity list
+- restingHR = Resting heart rate in bpm
+- sleepPct = Sleep performance % (the SLEEP ring, not recovery)
+- strain = Day strain score (e.g. 13.8) — from the HOME SCREEN only, read the DATE shown on that screen
+- strainDate = The date shown at top of the home screen where strain was read, converted to YYYY-MM-DD format (e.g. "TUE, JUN 2" → "2026-06-02")
+- activities = List of activities from the home screen (e.g. Running, Weightlifting) with their individual strain scores — use the home screen date for these
+- Use null for any value not found. Do not guess.`
   });
 
   try {
@@ -931,6 +978,24 @@ Use null for any value not found across any of the images.`
     document.getElementById('ex-recovery').value = parsed.recovery || '';
     document.getElementById('ex-deep').value = parsed.deep || '';
     document.getElementById('ex-sleep').value = parsed.totalSleep || '';
+    document.getElementById('ex-rhr').value = parsed.restingHR || '';
+    document.getElementById('ex-sleeppct').value = parsed.sleepPct || '';
+    document.getElementById('ex-strain').value = parsed.strain || '';
+    document.getElementById('ex-strain-date').value = parsed.strainDate || '';
+
+    // Show activities if found
+    const actBlock = document.getElementById('ex-activities-block');
+    const actList = document.getElementById('ex-activities-list');
+    if (parsed.activities && parsed.activities.length) {
+      actList.innerHTML = parsed.activities.map(a => `
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px">
+          <span style="font-size:12px">${a.name}</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--accent)">strain ${a.strain}</span>
+        </div>`).join('');
+      actBlock.style.display = 'block';
+    } else {
+      actBlock.style.display = 'none';
+    }
 
     loading.style.display = 'none';
     extracted.style.display = 'block';
@@ -960,12 +1025,35 @@ window.saveMorningLog = async function() {
   if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Saving…'; }
 
   try {
+    // Save today's sleep/recovery data
     await setDoc(doc(db, 'sleep_morning', ACTIVE_MORNING_DATE), {
       date: ACTIVE_MORNING_DATE,
       hrv, recovery, deep, totalSleep,
+      restingHR: parseFloat(document.getElementById('ex-rhr').value) || null,
+      sleepPct: parseFloat(document.getElementById('ex-sleeppct').value) || null,
       recoveryFeel: recoveryFeelVal || null,
       savedAt: new Date().toISOString()
     });
+
+    // Save strain + activities to the strain date (yesterday's home screen date)
+    const strainDate = document.getElementById('ex-strain-date').value || null;
+    const strain = parseFloat(document.getElementById('ex-strain').value) || null;
+    const actItems = document.querySelectorAll('#ex-activities-list > div');
+    const activities = [];
+    actItems.forEach(el => {
+      const name = el.querySelector('span:first-child')?.textContent;
+      const strainText = el.querySelector('span:last-child')?.textContent?.replace('strain ','');
+      if (name) activities.push({ name, strain: parseFloat(strainText) || 0 });
+    });
+
+    if (strainDate && strain) {
+      await setDoc(doc(db, 'sleep_strain', strainDate), {
+        date: strainDate,
+        strain,
+        activities,
+        savedAt: new Date().toISOString()
+      });
+    }
 
     await loadAllLogs();
     renderStatStrip();
@@ -978,6 +1066,12 @@ window.saveMorningLog = async function() {
     document.getElementById('upload-preview').innerHTML = '';
     document.getElementById('extracted-block').style.display = 'none';
     document.getElementById('whoop-img-input').value = '';
+    document.getElementById('ex-rhr').value = '';
+    document.getElementById('ex-sleeppct').value = '';
+    document.getElementById('ex-strain').value = '';
+    document.getElementById('ex-strain-date').value = '';
+    document.getElementById('ex-activities-block').style.display = 'none';
+    document.getElementById('ex-activities-list').innerHTML = '';
     recoveryFeelVal = 0;
     document.querySelectorAll('#recovery-stars .star').forEach(s => s.classList.remove('on'));
     if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm & Save Morning Log ✓'; }
@@ -1152,17 +1246,21 @@ window.runWeeklyInsights = async function() {
   const sorted = [...allLogs].sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
   let eatingData = [];
   let nightData = [];
+  let strainData = [];
   for (const l of sorted) {
     const eSnap = await getDoc(doc(db,'sleep_eating',l.date));
     if (eSnap.exists()) eatingData.push({date:l.date,...eSnap.data()});
     const nSnap = await getDoc(doc(db,'sleep_night',l.date));
     if (nSnap.exists()) nightData.push({date:l.date,...nSnap.data()});
+    const sSnap = await getDoc(doc(db,'sleep_strain',l.date));
+    if (sSnap.exists()) strainData.push({date:l.date,...sSnap.data()});
   }
 
   const summary = {
     morningLogs: sorted,
     eatingLogs: eatingData,
-    nightLogs: nightData
+    nightLogs: nightData,
+    strainLogs: strainData
   };
 
   try {
@@ -1174,7 +1272,7 @@ window.runWeeklyInsights = async function() {
         max_tokens: 1000,
         messages: [{
           role: 'user',
-          content: `You are a sleep and HRV coach. Analyze this data from my last ${sorted.length} days of tracking and give me 3-4 specific, actionable insights. Be conversational, direct, and specific — reference the actual numbers. Focus on patterns between eating timing, bedtime consistency, stress levels, alcohol, and HRV/deep sleep outcomes. Format as short paragraphs with emoji headers. If data is limited, say so and give general guidance. Data: ${JSON.stringify(summary)}`
+          content: `You are a sleep and HRV coach. Analyze this data from my last ${sorted.length} days of tracking and give me 3-4 specific, actionable insights. Be conversational, direct, and specific — reference the actual numbers. Focus on patterns between eating cutoff, bedtime consistency, stress, alcohol, workout strain, and HRV/deep sleep outcomes. Look for correlations like whether high strain days affect next-day HRV, whether beating the 8 PM eating cutoff improves deep sleep, and whether stress levels correlate with recovery %. Format as short paragraphs with emoji headers. If data is limited, say so and give general guidance. Data: ${JSON.stringify(summary)}`
         }]
       })
     });
