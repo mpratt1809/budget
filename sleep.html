@@ -243,8 +243,18 @@ canvas{width:100%!important;height:120px!important}
     <div class="hero-sub" id="hero-date">—</div>
   </div>
 
+  <!-- STAT DATE NAV -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px" id="stat-date-label">—</div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <button onclick="shiftStatDate(-1)" style="background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;width:24px;height:24px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
+      <button onclick="shiftStatDate(1)" style="background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;width:24px;height:24px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
+      <button onclick="loadStatDate(TODAY_KEY)" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:9px;padding:3px 7px;cursor:pointer" id="btn-stat-today">Today</button>
+    </div>
+  </div>
+
   <!-- STAT STRIP -->
-  <div class="stat-strip" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat-strip" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">
     <div class="stat">
       <div class="stat-label">HRV</div>
       <div class="stat-val purple" id="stat-hrv">—</div>
@@ -298,8 +308,8 @@ canvas{width:100%!important;height:120px!important}
       <div class="card-hd" style="padding:12px 16px;background:var(--card2)">
         <div class="card-icon" style="background:#4fc38a15;width:26px;height:26px;font-size:12px">🍽️</div>
         <div style="flex:1">
-          <div class="card-title" style="font-size:13px">8 PM Eating Cutoff</div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px">Did you stop eating by 8 PM last night?</div>
+          <div class="card-title" id="cutoff-card-title" style="font-size:13px">8 PM Eating Cutoff</div>
+          <div id="cutoff-card-sub" style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px">Did you stop eating by 8 PM last night?</div>
         </div>
         <div id="eating-status" style="font-size:11px;font-family:var(--mono)"></div>
       </div>
@@ -463,26 +473,58 @@ canvas{width:100%!important;height:120px!important}
         <div class="empty-sub">Log 3+ days to see trends</div>
       </div>
       <div id="trends-charts">
+        <!-- Row 1: HRV + Recovery -->
         <div class="chart-wrap">
           <div class="chart-title">
-            <span>HRV (ms) — Last 14 Days</span>
+            <span>HRV (ms)</span>
             <span id="hrv-avg-label" style="color:var(--sleep)">avg —</span>
           </div>
           <canvas id="chart-hrv"></canvas>
         </div>
         <div class="chart-wrap">
           <div class="chart-title">
-            <span>Deep Sleep % — Last 14 Days</span>
+            <span>Recovery %</span>
+            <span id="recovery-avg-label" style="color:var(--accent2)">avg —</span>
+          </div>
+          <canvas id="chart-recovery"></canvas>
+        </div>
+        <!-- Row 2: Deep Sleep + Total Sleep -->
+        <div class="chart-wrap">
+          <div class="chart-title">
+            <span>Deep Sleep %</span>
             <span id="deep-avg-label" style="color:var(--info)">avg —</span>
           </div>
           <canvas id="chart-deep"></canvas>
         </div>
         <div class="chart-wrap">
           <div class="chart-title">
-            <span>Snack Cutoff Streak</span>
+            <span>Total Sleep (hrs)</span>
+            <span id="sleep-avg-label" style="color:var(--warn)">avg —</span>
+          </div>
+          <canvas id="chart-sleep"></canvas>
+        </div>
+        <!-- Row 3: Resting HR + Strain -->
+        <div class="chart-wrap">
+          <div class="chart-title">
+            <span>Resting HR (bpm)</span>
+            <span id="rhr-avg-label" style="color:var(--warn)">avg —</span>
+          </div>
+          <canvas id="chart-rhr"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-title">
+            <span>Strain</span>
+            <span id="strain-avg-label" style="color:var(--accent)">avg —</span>
+          </div>
+          <canvas id="chart-strain"></canvas>
+        </div>
+        <!-- Cutoff streak + streaks card -->
+        <div class="chart-wrap">
+          <div class="chart-title">
+            <span>Eating Cutoff Streak</span>
             <span id="cutoff-streak-label" style="color:var(--accent2)">—</span>
           </div>
-          <div class="streak-dots" id="cutoff-streak-dots"></div>
+          <div class="streak-dots" id="cutoff-streak-dots" style="margin-top:8px"></div>
         </div>
         <div class="card">
           <div class="card-hd">
@@ -496,7 +538,6 @@ canvas{width:100%!important;height:120px!important}
             <div id="streak-rows"></div>
           </div>
         </div>
-        <div id="recent-log-list"></div>
       </div>
     </div>
   </div>
@@ -518,6 +559,22 @@ canvas{width:100%!important;height:120px!important}
     </div>
     <div class="note note-purple">✦ AI looks at your last 14 days of sleep logs, HRV, eating window data, and pre-bed habits to find what's actually moving the needle for you.</div>
     <div style="margin-top:12px;font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center">Needs 7+ days of data for meaningful analysis</div>
+
+    <!-- SLEEP SETTINGS -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-hd" style="background:var(--card2);padding:12px 16px">
+        <div class="card-icon" style="background:#7c6af715;width:26px;height:26px;font-size:12px">⚙️</div>
+        <div class="card-title" style="font-size:13px">Sleep Settings</div>
+      </div>
+      <div style="padding:14px 16px">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Eating Cutoff Goal</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <input type="time" id="setting-cutoff-time" style="background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:16px;padding:8px 12px;outline:none;flex:1" onchange="saveCutoffSetting(this.value)">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted)" id="cutoff-setting-label">—</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px">Changes apply to the cutoff badge label and streak tracking going forward.</div>
+      </div>
+    </div>
   </div>
 
 </div><!-- /page -->
@@ -576,6 +633,8 @@ const TODAY_KEY = new Date().toISOString().slice(0,10);
 let ACTIVE_LOG_DATE = TODAY_KEY;
 let ACTIVE_MORNING_DATE = TODAY_KEY;
 let DB_READY = false;
+let CUTOFF_TIME = '20:00'; // default 8 PM, loaded from Firebase
+let STAT_DATE = TODAY_KEY; // which date the stat strip is showing
 
 // ── AUTH ──
 window.signInWithGoogle = async function() {
@@ -603,10 +662,18 @@ async function init() {
   if (dp) { dp.value = TODAY_KEY; dp.max = TODAY_KEY; }
   const mp = document.getElementById('morning-date-picker');
   if (mp) { mp.value = TODAY_KEY; mp.max = TODAY_KEY; }
+  // Load cutoff setting
+  try {
+    const snap = await getDoc(doc(db, 'sleep_settings', 'config'));
+    if (snap.exists() && snap.data().cutoffTime) {
+      CUTOFF_TIME = snap.data().cutoffTime;
+    }
+  } catch(e) {}
+  updateCutoffUI();
   await loadTodayData();
   await loadAllLogs();
+  loadStatDate(TODAY_KEY);
   renderTrends();
-  renderStatStrip();
 }
 
 // ── MORNING DATE NAVIGATION ──
@@ -644,7 +711,66 @@ window.shiftMorningDate = function(dir) {
   changeMorningDate(newDate);
 };
 
-// ── DATE NAVIGATION ──
+// ── CUTOFF SETTING ──
+function updateCutoffUI() {
+  const input = document.getElementById('setting-cutoff-time');
+  const label = document.getElementById('cutoff-setting-label');
+  const cardTitle = document.getElementById('cutoff-card-title');
+  const cardSub = document.getElementById('cutoff-card-sub');
+  if (input) input.value = CUTOFF_TIME;
+  const fmt = fmt12(CUTOFF_TIME);
+  if (label) label.textContent = fmt;
+  if (cardTitle) cardTitle.textContent = fmt + ' Eating Cutoff';
+  if (cardSub) cardSub.textContent = 'Did you stop eating by ' + fmt + ' last night?';
+}
+
+window.saveCutoffSetting = async function(val) {
+  if (!val) return;
+  CUTOFF_TIME = val;
+  updateCutoffUI();
+  try {
+    await setDoc(doc(db, 'sleep_settings', 'config'), { cutoffTime: val });
+    showToast('Cutoff updated to ' + fmt12(val) + ' ✓', 'ok');
+  } catch(e) {
+    showToast('Save failed: ' + e.message, 'err');
+  }
+};
+
+// ── STAT DATE NAVIGATION ──
+window.loadStatDate = async function(dateStr) {
+  STAT_DATE = dateStr;
+  const label = document.getElementById('stat-date-label');
+  const todayBtn = document.getElementById('btn-stat-today');
+  if (label) label.textContent = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}).toUpperCase();
+  if (todayBtn) todayBtn.style.opacity = dateStr === TODAY_KEY ? '0.3' : '1';
+
+  // Load morning log for this date
+  const snap = await getDoc(doc(db, 'sleep_morning', dateStr));
+  if (snap.exists()) {
+    const d = snap.data();
+    document.getElementById('stat-hrv').textContent      = d.hrv       ? d.hrv+'ms'      : '—';
+    document.getElementById('stat-recovery').textContent = d.recovery  ? d.recovery+'%'  : '—';
+    document.getElementById('stat-deep').textContent     = d.deep      ? d.deep+'%'      : '—';
+    document.getElementById('stat-sleep').textContent    = d.totalSleep || '—';
+    document.getElementById('stat-rhr').textContent      = d.restingHR ? d.restingHR+'bpm' : '—';
+  } else {
+    ['stat-hrv','stat-recovery','stat-deep','stat-sleep','stat-rhr'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+  }
+
+  // Load strain for this date
+  const strainSnap = await getDoc(doc(db, 'sleep_strain', dateStr));
+  document.getElementById('stat-strain').textContent = strainSnap.exists() ? strainSnap.data().strain || '—' : '—';
+};
+
+window.shiftStatDate = function(dir) {
+  const d = new Date(STAT_DATE + 'T12:00:00');
+  d.setDate(d.getDate() + dir);
+  const newDate = d.toISOString().slice(0,10);
+  if (newDate > TODAY_KEY) return;
+  loadStatDate(newDate);
+};
 window.changeLogDate = async function(dateStr) {
   ACTIVE_LOG_DATE = dateStr;
   const dp = document.getElementById('log-date-picker');
@@ -757,22 +883,7 @@ async function loadAllLogs() {
 
 // ── STAT STRIP ──
 function renderStatStrip() {
-  if (!allLogs.length) return;
-  const latest = allLogs[0];
-  document.getElementById('stat-hrv').textContent      = latest.hrv       ? latest.hrv+'ms'  : '—';
-  document.getElementById('stat-recovery').textContent = latest.recovery  ? latest.recovery+'%' : '—';
-  document.getElementById('stat-deep').textContent     = latest.deep      ? latest.deep+'%'  : '—';
-  document.getElementById('stat-sleep').textContent    = latest.totalSleep || '—';
-  document.getElementById('stat-rhr').textContent      = latest.restingHR ? latest.restingHR+'bpm' : '—';
-  // Strain is from yesterday — get the day before latest log
-  const yesterday = new Date(latest.date + 'T12:00:00');
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yKey = yesterday.toISOString().slice(0,10);
-  getDoc(doc(db, 'sleep_strain', yKey)).then(snap => {
-    if (snap.exists()) {
-      document.getElementById('stat-strain').textContent = snap.data().strain || '—';
-    }
-  }).catch(() => {});
+  loadStatDate(STAT_DATE);
 }
 
 // ── EATING WINDOW ──
@@ -817,7 +928,7 @@ function updateEatingUI() {
     fillEl.style.left  = Math.max(0, left)  + '%';
     fillEl.style.width = Math.max(0, width) + '%';
 
-    const cutoffMins = timeToMins('20:00');
+    const cutoffMins = timeToMins(CUTOFF_TIME);
     const cutoffPct  = ((cutoffMins - dayStart) / dayRange) * 100;
     document.getElementById('eating-cutoff').style.left = cutoffPct + '%';
 
@@ -1102,81 +1213,105 @@ window.saveMorningLog = async function() {
 };
 
 // ── TRENDS ──
+let recoveryChart = null, sleepChart = null, rhrChart = null, strainChart = null;
+
 function renderTrends() {
   const empty = document.getElementById('trends-empty');
   const charts = document.getElementById('trends-charts');
-
-  if (allLogs.length < 2) {
-    empty.style.display = 'block';
-    charts.style.display = 'none';
-    return;
-  }
+  if (allLogs.length < 2) { empty.style.display='block'; charts.style.display='none'; return; }
   empty.style.display = 'none';
   charts.style.display = 'block';
 
   const sorted = [...allLogs].sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
-  const labels = sorted.map(l => {
-    const d = new Date(l.date+'T12:00:00');
-    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  });
-  const hrvVals = sorted.map(l => l.hrv || null);
-  const deepVals = sorted.map(l => l.deep || null);
+  const labels = sorted.map(l => new Date(l.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
 
-  const chartDefaults = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#16161a', borderColor: '#25252d', borderWidth: 1, titleColor: '#7a7a8a', bodyColor: '#e8e8ec', titleFont: { family: 'DM Mono', size: 10 }, bodyFont: { family: 'DM Mono', size: 12 } } },
-    scales: {
-      x: { grid: { color: '#25252d' }, ticks: { color: '#7a7a8a', font: { family: 'DM Mono', size: 9 } } },
-      y: { grid: { color: '#25252d' }, ticks: { color: '#7a7a8a', font: { family: 'DM Mono', size: 9 } } }
+  const hrvVals      = sorted.map(l => l.hrv      || null);
+  const recovVals    = sorted.map(l => l.recovery  || null);
+  const deepVals     = sorted.map(l => l.deep      || null);
+  const sleepVals    = sorted.map(l => {
+    if (!l.totalSleep) return null;
+    const parts = l.totalSleep.split(':');
+    return parseFloat(parts[0]) + (parseFloat(parts[1]||0)/60);
+  });
+  const rhrVals      = sorted.map(l => l.restingHR || null);
+
+  const cd = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#1e1e26', borderColor:'#32323e', borderWidth:1, titleColor:'#8888a0', bodyColor:'#eeeef2', titleFont:{family:'DM Mono',size:10}, bodyFont:{family:'DM Mono',size:12} }},
+    scales:{
+      x:{ grid:{color:'#25252d'}, ticks:{color:'#7a7a8a',font:{family:'DM Mono',size:9}} },
+      y:{ grid:{color:'#25252d'}, ticks:{color:'#7a7a8a',font:{family:'DM Mono',size:9}} }
     }
   };
 
-  // HRV chart
-  if (hrvChart) hrvChart.destroy();
-  hrvChart = new Chart(document.getElementById('chart-hrv'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        data: hrvVals,
-        borderColor: '#a78bfa',
-        backgroundColor: 'rgba(167,139,250,0.08)',
-        borderWidth: 2,
-        pointBackgroundColor: '#a78bfa',
-        pointRadius: 3,
-        tension: 0.4,
-        fill: true,
-        spanGaps: true
-      }]
-    },
-    options: chartDefaults
-  });
-  const validHrv = hrvVals.filter(Boolean);
-  const avgHrv = validHrv.length ? Math.round(validHrv.reduce((a,b)=>a+b,0)/validHrv.length) : null;
-  document.getElementById('hrv-avg-label').textContent = avgHrv ? 'avg '+avgHrv+'ms' : 'avg —';
+  const makeLine = (id, vals, color, bgAlpha, existing) => {
+    if (existing) existing.destroy();
+    return new Chart(document.getElementById(id), {
+      type:'line', data:{ labels, datasets:[{ data:vals, borderColor:color, backgroundColor:color.replace(')',`,${bgAlpha})`).replace('rgb','rgba'), borderWidth:2, pointBackgroundColor:color, pointRadius:3, tension:0.4, fill:true, spanGaps:true }]},
+      options:cd
+    });
+  };
+  const makeBar = (id, vals, colorFn, existing, yMax) => {
+    if (existing) existing.destroy();
+    const opts = yMax ? {...cd, scales:{...cd.scales, y:{...cd.scales.y, max:yMax}}} : cd;
+    return new Chart(document.getElementById(id), {
+      type:'bar', data:{ labels, datasets:[{ data:vals, backgroundColor:vals.map(colorFn), borderRadius:4 }]},
+      options:opts
+    });
+  };
 
-  // Deep chart
-  if (deepChart) deepChart.destroy();
-  deepChart = new Chart(document.getElementById('chart-deep'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: deepVals,
-        backgroundColor: deepVals.map(v => v >= 15 ? 'rgba(79,195,138,0.7)' : v >= 10 ? 'rgba(240,160,72,0.7)' : 'rgba(224,85,85,0.7)'),
-        borderRadius: 4
-      }]
-    },
-    options: { ...chartDefaults, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales?.y, max: 30 } } }
-  });
-  const validDeep = deepVals.filter(Boolean);
-  const avgDeep = validDeep.length ? (validDeep.reduce((a,b)=>a+b,0)/validDeep.length).toFixed(1) : null;
-  document.getElementById('deep-avg-label').textContent = avgDeep ? 'avg '+avgDeep+'%' : 'avg —';
+  // HRV — line purple
+  hrvChart = makeLine('chart-hrv', hrvVals, '#a78bfa', 0.08, hrvChart);
+  setAvg('hrv-avg-label', hrvVals, 'ms', 0, 'var(--sleep)');
 
-  // Snack cutoff streak — need eating data
+  // Recovery — line green
+  recoveryChart = makeLine('chart-recovery', recovVals, '#4fc38a', 0.08, recoveryChart);
+  setAvg('recovery-avg-label', recovVals, '%', 0, 'var(--accent2)');
+
+  // Deep sleep — bar color coded
+  deepChart = makeBar('chart-deep', deepVals,
+    v => v >= 15 ? 'rgba(79,195,138,0.75)' : v >= 10 ? 'rgba(240,160,72,0.75)' : 'rgba(224,85,85,0.75)',
+    deepChart, 30);
+  setAvg('deep-avg-label', deepVals, '%', 1, 'var(--info)');
+
+  // Total sleep — bar, color by duration
+  sleepChart = makeBar('chart-sleep', sleepVals,
+    v => v >= 7.5 ? 'rgba(79,195,138,0.75)' : v >= 6 ? 'rgba(240,160,72,0.75)' : 'rgba(224,85,85,0.75)',
+    sleepChart, null);
+  setAvg('sleep-avg-label', sleepVals, 'h', 1, 'var(--warn)');
+
+  // Resting HR — line, lower is better
+  rhrChart = makeLine('chart-rhr', rhrVals, '#f0a048', 0.06, rhrChart);
+  setAvg('rhr-avg-label', rhrVals, 'bpm', 0, 'var(--warn)');
+
+  // Strain — pulled async from sleep_strain collection
+  renderStrainChart(sorted, labels, cd);
+
   renderStreaks(sorted);
-  renderRecentLogs(sorted);
+}
+
+async function renderStrainChart(sorted, labels, cd) {
+  const strainVals = [];
+  for (const l of sorted) {
+    const snap = await getDoc(doc(db,'sleep_strain',l.date));
+    strainVals.push(snap.exists() ? (snap.data().strain || null) : null);
+  }
+  if (strainChart) strainChart.destroy();
+  strainChart = new Chart(document.getElementById('chart-strain'), {
+    type:'line', data:{ labels, datasets:[{ data:strainVals, borderColor:'#7c6af7', backgroundColor:'rgba(124,106,247,0.06)', borderWidth:2, pointBackgroundColor:'#7c6af7', pointRadius:3, tension:0.4, fill:true, spanGaps:true }]},
+    options:cd
+  });
+  setAvg('strain-avg-label', strainVals, '', 1, 'var(--accent)');
+}
+
+function setAvg(id, vals, unit, decimals, color) {
+  const valid = vals.filter(v => v !== null && v !== undefined);
+  const avg = valid.length ? (valid.reduce((a,b)=>a+b,0)/valid.length) : null;
+  const el = document.getElementById(id);
+  if (el) {
+    el.textContent = avg !== null ? 'avg ' + avg.toFixed(decimals) + unit : 'avg —';
+    el.style.color = color;
+  }
 }
 
 async function renderStreaks(sorted) {
@@ -1192,7 +1327,7 @@ async function renderStreaks(sorted) {
       if (data.cutoff) {
         hit = data.cutoff === 'beat';
       } else if (data.lastMeal) {
-        hit = timeToMins(data.lastMeal) <= timeToMins('20:00');
+        hit = timeToMins(data.lastMeal) <= timeToMins(CUTOFF_TIME);
       } else {
         cutoffDots.push('empty'); continue;
       }
@@ -1234,19 +1369,6 @@ async function renderStreaks(sorted) {
   `;
 }
 
-function renderRecentLogs(sorted) {
-  const el = document.getElementById('recent-log-list');
-  const recent = [...sorted].reverse().slice(0,5);
-  el.innerHTML = '<div class="section-label" style="margin-top:4px">Recent Entries</div>' + recent.map(l=>`
-    <div class="log-entry">
-      <div class="log-entry-date">${new Date(l.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</div>
-      ${l.hrv ? `<div class="log-entry-row"><span class="log-entry-key">HRV</span><span class="log-entry-val" style="color:var(--sleep)">${l.hrv}ms</span></div>` : ''}
-      ${l.recovery ? `<div class="log-entry-row"><span class="log-entry-key">Recovery</span><span class="log-entry-val" style="color:var(--accent2)">${l.recovery}%</span></div>` : ''}
-      ${l.deep ? `<div class="log-entry-row"><span class="log-entry-key">Deep Sleep</span><span class="log-entry-val" style="color:var(--info)">${l.deep}%</span></div>` : ''}
-      ${l.totalSleep ? `<div class="log-entry-row"><span class="log-entry-key">Total Sleep</span><span class="log-entry-val">${l.totalSleep}</span></div>` : ''}
-    </div>
-  `).join('');
-}
 
 // ── AI INSIGHTS ──
 window.runWeeklyInsights = async function() {
