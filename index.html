@@ -912,7 +912,7 @@ window.handlePDFUpload = async function(file) {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
+        model:"claude-sonnet-4-6",
         max_tokens:1000,
         system:`You are a financial data extraction assistant. Extract spending categories from bank/credit card statements. 
 Return ONLY valid JSON in this exact format, no markdown, no explanation:
@@ -1001,7 +1001,7 @@ ${(() => {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
+        model:"claude-sonnet-4-6",
         max_tokens:1000,
         system:"You are Meagan's personal financial advisor with full knowledge of her finances. Be direct, specific, and actionable. Use her real numbers. Keep responses concise but thorough — 3-5 sentences max unless a detailed breakdown is needed. Never be generic.",
         messages:[{role:"user",content:context+"\n\nQUESTION: "+question}]
