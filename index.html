@@ -841,7 +841,7 @@ function renderSpending() {
       merged[c.name].targetCount += 1;
     });
   });
-  const cats = Object.values(merged).map(c => ({ ...c, target: Math.round(c.target/c.targetCount) }));
+  const cats = Object.values(merged).map(c => ({ ...c, actual: Math.round(c.actual*100)/100, target: Math.round(c.target/c.targetCount) }));
 
   const total = cats.reduce((s,c)=>s+c.actual,0);
   document.getElementById('spend-badge').textContent = '$'+total.toLocaleString('en-US',{maximumFractionDigits:0})+' analyzed';
