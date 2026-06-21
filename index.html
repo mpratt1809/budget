@@ -565,7 +565,7 @@ const DEFAULT_SETTINGS = { paycheck: 4358, anchor: '2026-05-02' };
 
 let DEBTS = [], INVESTMENTS = [], FIXED_BILLS = [];
 let SETTINGS = {...DEFAULT_SETTINGS};
-let SPENDING = {};
+let SPENDING_ACCOUNTS = {}; // keyed by account id: { boa: {...}, ufcu: {...} }
 let TASKS = { boards:[], filter:'all', showDone:false };
 let DB_READY = false;
 let HIDE_PAID = false;
@@ -591,8 +591,8 @@ async function initData() {
     const settSnap = await getDoc(doc(db,'hub','settings'));
     if (settSnap.exists()) Object.assign(SETTINGS, settSnap.data());
     else await setDoc(doc(db,'hub','settings'), DEFAULT_SETTINGS);
-    const spendSnap = await getDoc(doc(db,'hub','spending'));
-    SPENDING = spendSnap.exists() ? spendSnap.data() : {};
+    const spendSnap = await getDoc(doc(db,'hub','spending_accounts'));
+    SPENDING_ACCOUNTS = spendSnap.exists() ? spendSnap.data() : {};
     const taskSnap = await getDoc(doc(db,'hub','tasks'));
     if (taskSnap.exists()) Object.assign(TASKS, taskSnap.data());
     DB_READY = true;
@@ -629,7 +629,7 @@ function setSyncStatus(state) {
 
 async function saveDebts()       { if(DB_READY) await setDoc(doc(db,'hub','debts'),       {list: DEBTS}); }
 async function saveInvestments() { if(DB_READY) await setDoc(doc(db,'hub','investments'), {list: INVESTMENTS}); }
-async function saveSpending(d)   { if(DB_READY) await setDoc(doc(db,'hub','spending'),    d); }
+async function saveSpending(d)   { if(DB_READY) await setDoc(doc(db,'hub','spending_accounts'), d, {merge:true}); }
 let _saveTasksTimer = null;
 async function saveTasksImmediate() { if(DB_READY) await setDoc(doc(db,'hub','tasks'), {...TASKS}); }
 async function saveTasks() { clearTimeout(_saveTasksTimer); _saveTasksTimer = setTimeout(()=>saveTasksImmediate(), 800); }
@@ -828,12 +828,31 @@ function renderPaycheckCalendar() {
 }
 
 function renderSpending() {
-  if (!SPENDING.categories || !SPENDING.categories.length) return;
-  const cats = SPENDING.categories;
+  const accounts = Object.values(SPENDING_ACCOUNTS).filter(a => a && a.categories && a.categories.length);
+  if (!accounts.length) return;
+
+  // Merge categories across all accounts by name, summing actual + averaging target
+  const merged = {};
+  accounts.forEach(acct => {
+    acct.categories.forEach(c => {
+      if (!merged[c.name]) merged[c.name] = { name:c.name, icon:c.icon, actual:0, target:0, targetCount:0 };
+      merged[c.name].actual += c.actual;
+      merged[c.name].target += c.target;
+      merged[c.name].targetCount += 1;
+    });
+  });
+  const cats = Object.values(merged).map(c => ({ ...c, target: Math.round(c.target/c.targetCount) }));
+
   const total = cats.reduce((s,c)=>s+c.actual,0);
   document.getElementById('spend-badge').textContent = '$'+total.toLocaleString('en-US',{maximumFractionDigits:0})+' analyzed';
+
+  const accountChips = accounts.map(a =>
+    `<span class="card-badge" style="margin-right:6px">${a.accountLabel||a.account} · ${a.month||''}</span>`
+  ).join('');
+
   document.getElementById('spend-body').innerHTML = `
-    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:12px">${SPENDING.month||'Last statement'} · ${SPENDING.txCount||0} transactions</div>` +
+    <div style="margin-bottom:10px">${accountChips}</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:12px">Combined across ${accounts.length} account${accounts.length>1?'s':''}</div>` +
     cats.map(c => {
       const pct = Math.min(100, (c.actual/Math.max(c.target,c.actual))*100);
       const tpct = (c.target/Math.max(c.target,c.actual))*100;
@@ -897,7 +916,8 @@ window.handlePDFUpload = async function(file) {
         max_tokens:1000,
         system:`You are a financial data extraction assistant. Extract spending categories from bank/credit card statements. 
 Return ONLY valid JSON in this exact format, no markdown, no explanation:
-{"month":"Month YYYY","txCount":N,"categories":[{"name":"Category","icon":"emoji","actual":N,"target":N}]}
+{"account":"boa|ufcu|other","accountLabel":"Bank of America|UFCU|<detected name>","month":"Month YYYY","txCount":N,"categories":[{"name":"Category","icon":"emoji","actual":N,"target":N}]}
+Detect the bank from the statement header, logo text, or footer branding. Use "boa" for Bank of America, "ufcu" for University Federal Credit Union (UFCU). If you cannot confidently identify either, use "other" and set accountLabel to whatever name you can read off the statement.
 Categories to extract: Dining Out & Delivery, Groceries, Gas & Transportation, Shopping & Amazon, Pets, Pharmacy & Health, Utilities & Bills, Entertainment & Subscriptions, Personal Care, Other.
 Set reasonable targets based on Austin TX cost of living for a household of 2.`,
         messages:[{
@@ -914,11 +934,12 @@ Set reasonable targets based on Austin TX cost of living for a household of 2.`,
     const clean = text.replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(clean);
     parsed.uploadedAt = new Date().toISOString();
-    await saveSpending(parsed);
-    SPENDING = parsed;
+    const acctKey = parsed.account || 'other';
+    await saveSpending({ [acctKey]: parsed });
+    SPENDING_ACCOUNTS[acctKey] = parsed;
     renderSpending();
-    log.innerHTML += `<div class="log-line ok">✅ Analyzed! ${parsed.txCount} transactions · ${parsed.categories.length} categories</div>`;
-    showToast('Statement analyzed ✓','ok');
+    log.innerHTML += `<div class="log-line ok">✅ Analyzed ${parsed.accountLabel||acctKey}! ${parsed.txCount} transactions · ${parsed.categories.length} categories</div>`;
+    showToast((parsed.accountLabel||'Statement')+' analyzed ✓','ok');
   } catch(e) {
     console.error(e);
     log.innerHTML += '<div class="log-line err">❌ Error: '+e.message+'</div>';
@@ -964,7 +985,14 @@ FIXED BILLS: $${totalBills}/mo including mortgage $2,770, SoFi $1,807.80, Subaru
 GOALS: Pay off all consumer debt by end of 2026 (except Subaru). Debt-free date excluding mortgage/Subaru projected ~Aug 2027. 
 Currently attacking SoFi ($29K). Affirm loans running at 0% until Jan 2027.
 401k contributing up to employer match. Roth IRA contributions ongoing.
-${SPENDING.categories ? 'SPENDING (last statement): '+SPENDING.categories.map(c=>c.name+': $'+c.actual).join(', ') : ''}`;
+${(() => {
+  const accts = Object.values(SPENDING_ACCOUNTS).filter(a=>a&&a.categories);
+  if (!accts.length) return '';
+  const merged = {};
+  accts.forEach(a => a.categories.forEach(c => { merged[c.name] = (merged[c.name]||0) + c.actual; }));
+  const lines = accts.map(a => `${a.accountLabel||a.account} (${a.month||'?'})`).join(', ');
+  return `SPENDING (accounts: ${lines}): ` + Object.entries(merged).map(([n,v])=>n+': $'+v).join(', ');
+})()}`;
   try {
     const res = await fetch(WORKER_URL, {
       method:"POST",
