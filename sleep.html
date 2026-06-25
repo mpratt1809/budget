@@ -121,13 +121,7 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 .check-val{font-family:var(--mono);font-size:11px;color:var(--muted)}
 
 /* ── UPLOAD ZONE ── */
-.upload-zone{border:2px dashed var(--border2);border-radius:12px;padding:24px;text-align:center;transition:all .2s;cursor:pointer;background:var(--card2)}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:#7c6af708}
-.upload-zone-icon{font-size:32px;margin-bottom:8px}
-.upload-zone-text{font-size:13px;color:var(--muted);margin-bottom:4px}
-.upload-zone-sub{font-family:var(--mono);font-size:10px;color:var(--muted)}
-.upload-preview{margin-top:12px;display:none}
-.upload-preview img{width:100%;border-radius:8px;border:1px solid var(--border);max-height:200px;object-fit:cover}
+
 
 /* ── EXTRACTED METRICS ── */
 .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
@@ -283,14 +277,13 @@ canvas{width:100%!important;height:120px!important}
 
   <!-- TAB NAV -->
   <div class="tab-nav">
-    <button class="tab-btn" onclick="switchTab('today',this)">Today</button>
-    <button class="tab-btn active" onclick="switchTab('morning',this)">Morning</button>
+    <button class="tab-btn active" onclick="switchTab('morning',this)">Log</button>
     <button class="tab-btn" onclick="switchTab('trends',this)">Trends</button>
     <button class="tab-btn" onclick="switchTab('insights',this)">AI</button>
   </div>
 
-  <!-- ══ TODAY TAB ══ -->
-  <div class="tab-pane" id="tab-today">
+  <!-- ══ LOG TAB (merged Today + Morning, upload removed) ══ -->
+  <div class="tab-pane active" id="tab-morning">
 
     <!-- DATE SELECTOR -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -333,7 +326,6 @@ canvas{width:100%!important;height:120px!important}
         </div>
       </div>
       <div style="padding:12px 16px 16px">
-        <!-- Bedtime + stress side by side -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div class="field" style="margin:0">
             <label class="field-label">Bedtime</label>
@@ -349,7 +341,6 @@ canvas{width:100%!important;height:120px!important}
             </select>
           </div>
         </div>
-        <!-- Stress — single row -->
         <div style="margin-bottom:12px">
           <label class="field-label" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px">Stress level</label>
           <div class="star-row" id="stress-stars" style="gap:12px">
@@ -367,114 +358,6 @@ canvas{width:100%!important;height:120px!important}
     </div>
   </div>
 
-  <!-- ══ MORNING TAB ══ -->
-  <div class="tab-pane active" id="tab-morning">
-
-    <!-- DATE SELECTOR -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px">LOGGING FOR</div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <button onclick="shiftMorningDate(-1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
-        <input type="date" id="morning-date-picker" style="background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 8px;outline:none;cursor:pointer" onchange="changeMorningDate(this.value)">
-        <button onclick="shiftMorningDate(1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:13px;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
-        <button onclick="changeMorningDate(TODAY_KEY)" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:var(--mono);font-size:9px;padding:4px 8px;cursor:pointer" id="btn-morning-today">Today</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-hd">
-        <div class="card-icon" style="background:#a78bfa15">📱</div>
-        <div>
-          <div class="card-title">Upload Whoop Screenshot</div>
-          <div class="card-sub">AI extracts your metrics automatically · select up to 3 screens</div>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('whoop-img-input').click()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="this.classList.remove('drag')">
-          <div class="upload-zone-icon">📸</div>
-          <div class="upload-zone-text">Tap to upload Whoop screenshots</div>
-          <div class="upload-zone-sub">Recovery detail · Sleep stages · Yesterday's home screen</div>
-        </div>
-        <input type="file" id="whoop-img-input" accept="image/*" multiple style="display:none" onchange="handleWhoopUpload(this.files)">
-        <div class="upload-preview" id="upload-preview" style="display:none;gap:8px;flex-wrap:wrap"></div>
-
-        <div id="extracted-block" style="display:none">
-          <div class="section-label" style="margin-top:16px">Extracted Metrics — review & confirm</div>
-          <div class="metrics-grid">
-            <div class="metric-box">
-              <div class="metric-box-label">HRV (ms)</div>
-              <input class="metric-box-val hrv" id="ex-hrv" placeholder="—" type="number">
-            </div>
-            <div class="metric-box">
-              <div class="metric-box-label">Recovery %</div>
-              <input class="metric-box-val recovery" id="ex-recovery" placeholder="—" type="number">
-            </div>
-            <div class="metric-box">
-              <div class="metric-box-label">Deep Sleep %</div>
-              <input class="metric-box-val deep" id="ex-deep" placeholder="—" type="number">
-            </div>
-            <div class="metric-box">
-              <div class="metric-box-label">Total Sleep</div>
-              <input class="metric-box-val sleep" id="ex-sleep" placeholder="e.g. 8:22" type="text">
-            </div>
-            <div class="metric-box">
-              <div class="metric-box-label">Resting HR</div>
-              <input class="metric-box-val" style="color:var(--warn)" id="ex-rhr" placeholder="—" type="number">
-            </div>
-            <div class="metric-box">
-              <div class="metric-box-label">Sleep %</div>
-              <input class="metric-box-val" style="color:var(--info)" id="ex-sleeppct" placeholder="—" type="number">
-            </div>
-            <div class="metric-box">
-              <div class="metric-box-label">Strain (yesterday)</div>
-              <input class="metric-box-val" style="color:var(--accent)" id="ex-strain" placeholder="—" type="number" step="0.1">
-            </div>
-          </div>
-
-          <!-- Save summary — shows exactly where each piece of data will go -->
-          <div style="background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:12px;margin:12px 0">
-            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Will save to</div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">
-              <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">HRV · Recovery · Sleep · Resting HR</span>
-              <span style="font-family:var(--mono);font-size:11px;color:var(--accent2)" id="save-summary-morning">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0">
-              <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Strain · Activities</span>
-              <div style="display:flex;align-items:center;gap:6px">
-                <input id="ex-strain-date" type="text" placeholder="—" style="background:transparent;border:none;border-bottom:1px dashed var(--border2);color:var(--accent);font-family:var(--mono);font-size:11px;width:90px;text-align:right;outline:none" title="Edit if wrong">
-                <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">(tap to edit)</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Activities from yesterday's home screen -->
-          <div id="ex-activities-block" style="display:none;margin:10px 0">
-            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Yesterday's Activities</div>
-            <div id="ex-activities-list" style="display:flex;flex-direction:column;gap:4px"></div>
-          </div>
-
-          <div class="field" style="margin-top:10px">
-            <label class="field-label">How do you feel this morning?</label>
-            <div class="star-row" id="recovery-stars">
-              <span class="star" data-v="1" onclick="setRecoveryFeel(1)">😵</span>
-              <span class="star" data-v="2" onclick="setRecoveryFeel(2)">😴</span>
-              <span class="star" data-v="3" onclick="setRecoveryFeel(3)">😐</span>
-              <span class="star" data-v="4" onclick="setRecoveryFeel(4)">🙂</span>
-              <span class="star" data-v="5" onclick="setRecoveryFeel(5)">⚡</span>
-            </div>
-          </div>
-          <button class="btn btn-green" id="btn-save-morning" onclick="saveMorningLog()" style="margin-top:8px">Confirm & Save Morning Log ✓</button>
-        </div>
-
-        <div id="extract-loading" style="display:none;text-align:center;padding:20px;color:var(--muted)">
-          <div class="spinner"></div>
-          <div style="font-family:var(--mono);font-size:11px;margin-top:8px">Reading your Whoop data…</div>
-        </div>
-
-        <div class="note note-purple" style="margin-top:12px">☀️ Upload 3 screens: today's recovery detail + sleep stages + yesterday's home screen. AI reads the dates automatically.</div>
-      </div>
-    </div>
-  </div>
 
   <!-- ══ TRENDS TAB ══ -->
   <div class="tab-pane" id="tab-trends">
@@ -636,14 +519,12 @@ const WORKER_URL = 'https://pratt-automation-api.mpratt1809.workers.dev';
 
 // ── STATE ──
 let stressVal = 0;
-let recoveryFeelVal = 0;
 let todayEating = { first: null, last: null };
 let allLogs = [];
 let hrvChart = null;
 let deepChart = null;
 const TODAY_KEY = new Date().toISOString().slice(0,10);
 let ACTIVE_LOG_DATE = TODAY_KEY;
-let ACTIVE_MORNING_DATE = TODAY_KEY;
 let DB_READY = false;
 let CUTOFF_TIME = '20:00'; // default 8 PM, loaded from Firebase
 let STAT_DATE = TODAY_KEY; // which date the stat strip is showing
@@ -672,8 +553,6 @@ async function init() {
   renderHeroDate();
   const dp = document.getElementById('log-date-picker');
   if (dp) { dp.value = TODAY_KEY; dp.max = TODAY_KEY; }
-  const mp = document.getElementById('morning-date-picker');
-  if (mp) { mp.value = TODAY_KEY; mp.max = TODAY_KEY; }
   // Load cutoff setting
   try {
     const snap = await getDoc(doc(db, 'sleep_settings', 'config'));
@@ -687,43 +566,6 @@ async function init() {
   loadStatDate(TODAY_KEY);
   renderTrends();
 }
-
-// ── MORNING DATE NAVIGATION ──
-window.changeMorningDate = function(dateStr) {
-  ACTIVE_MORNING_DATE = dateStr;
-  const mp = document.getElementById('morning-date-picker');
-  if (mp) mp.value = dateStr;
-  const todayBtn = document.getElementById('btn-morning-today');
-  if (todayBtn) todayBtn.style.opacity = dateStr === TODAY_KEY ? '0.3' : '1';
-  // Reset upload UI for the new date
-  document.getElementById('upload-zone').style.display = 'block';
-  document.getElementById('upload-preview').style.display = 'none';
-  document.getElementById('upload-preview').innerHTML = '';
-  document.getElementById('extracted-block').style.display = 'none';
-  document.getElementById('whoop-img-input').value = '';
-  recoveryFeelVal = 0;
-  document.querySelectorAll('#recovery-stars .star').forEach(s => s.classList.remove('on'));
-  document.getElementById('ex-hrv').value = '';
-  document.getElementById('ex-recovery').value = '';
-  document.getElementById('ex-deep').value = '';
-  document.getElementById('ex-sleep').value = '';
-  document.getElementById('ex-rhr').value = '';
-  document.getElementById('ex-sleeppct').value = '';
-  document.getElementById('ex-strain').value = '';
-  document.getElementById('ex-strain-date').value = '';
-  document.getElementById('ex-activities-block').style.display = 'none';
-  document.getElementById('ex-activities-list').innerHTML = '';
-  const summaryEl = document.getElementById('save-summary-morning');
-  if (summaryEl) summaryEl.textContent = '—';
-};
-
-window.shiftMorningDate = function(dir) {
-  const d = new Date(ACTIVE_MORNING_DATE + 'T12:00:00');
-  d.setDate(d.getDate() + dir);
-  const newDate = d.toISOString().slice(0,10);
-  if (newDate > TODAY_KEY) return;
-  changeMorningDate(newDate);
-};
 
 // ── CUTOFF SETTING ──
 function updateCutoffUI() {
@@ -1029,209 +871,6 @@ window.saveNightLog = async function() {
   }
 };
 
-// ── WHOOP UPLOAD ──
-window.handleDragOver = function(e) { e.preventDefault(); e.currentTarget.classList.add('drag'); };
-window.handleDrop = function(e) {
-  e.preventDefault(); e.currentTarget.classList.remove('drag');
-  if (e.dataTransfer.files.length) handleWhoopUpload(e.dataTransfer.files);
-};
-
-window.handleWhoopUpload = async function(files) {
-  if (!files || !files.length) return;
-  const preview = document.getElementById('upload-preview');
-  const loading = document.getElementById('extract-loading');
-  const extracted = document.getElementById('extracted-block');
-
-  // Show previews for all selected images
-  preview.style.display = 'flex';
-  preview.innerHTML = '';
-  document.getElementById('upload-zone').style.display = 'none';
-  loading.style.display = 'block';
-  extracted.style.display = 'none';
-
-  // Read all files as base64
-  const readFile = (file) => new Promise((res) => {
-    const reader = new FileReader();
-    reader.onload = (e) => res({ b64: e.target.result.split(',')[1], mediaType: file.type || 'image/jpeg', dataURL: e.target.result });
-    reader.readAsDataURL(file);
-  });
-
-  const images = await Promise.all(Array.from(files).map(readFile));
-
-  // Show thumbnails
-  images.forEach(img => {
-    const el = document.createElement('img');
-    el.src = img.dataURL;
-    el.style.cssText = 'width:calc(50% - 4px);border-radius:8px;border:1px solid var(--border);max-height:160px;object-fit:cover';
-    preview.appendChild(el);
-  });
-
-  // Build content array — one image block per file
-  const content = [];
-  images.forEach(img => {
-    content.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.b64 } });
-  });
-  content.push({
-    type: 'text',
-    text: `These are ${images.length} Whoop fitness tracker screenshot(s). Each screen may show a different date — read the date shown at the top of each screen carefully.
-
-Respond ONLY with a JSON object, no markdown, no explanation:
-{
-  "hrv": <number or null>,
-  "recovery": <number or null>,
-  "deep": <number or null>,
-  "totalSleep": "<h:mm string or null>",
-  "restingHR": <number or null>,
-  "sleepPct": <number or null>,
-  "strain": <number or null>,
-  "strainDate": "<YYYY-MM-DD or null>",
-  "activities": [{"name": "string", "strain": <number>}]
-}
-
-Rules:
-- hrv = Heart Rate Variability in milliseconds (from recovery detail screen) — just extract the number, ignore the date on this screen
-- recovery = Recovery % 0-100 (big ring number) — just extract the number, ignore the date on this screen
-- deep = SWS/Deep sleep % (from sleep stages screen) — just extract the number, ignore the date on this screen
-- totalSleep = Total sleep as h:mm (e.g. "7:04") from sleep stages or activity list — just extract the number, ignore the date on this screen
-- restingHR = Resting heart rate in bpm — just extract the number, ignore the date on this screen
-- sleepPct = Sleep performance % (the SLEEP ring, not recovery) — just extract the number, ignore the date on this screen
-- strain = Day strain score (e.g. 13.8) — from the HOME SCREEN ONLY. This is the ONLY field where the date matters.
-- strainDate = The date shown at top of the home screen where strain was read, converted to YYYY-MM-DD format (e.g. "TUE, JUN 2" → "2026-06-02"). If the home screen shows "TODAY" use today's date.
-- activities = List of activities from the home screen only (e.g. Running, Weightlifting) with their individual strain scores
-- Use null for any value not found. Do not guess.`
-  });
-
-  try {
-    const resp = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 500,
-        messages: [{ role: 'user', content }]
-      })
-    });
-
-    const data = await resp.json();
-    const text = data.content.map(c => c.text || '').join('');
-    const clean = text.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
-
-    document.getElementById('ex-hrv').value = parsed.hrv || '';
-    document.getElementById('ex-recovery').value = parsed.recovery || '';
-    document.getElementById('ex-deep').value = parsed.deep || '';
-    document.getElementById('ex-sleep').value = parsed.totalSleep || '';
-    document.getElementById('ex-rhr').value = parsed.restingHR || '';
-    document.getElementById('ex-sleeppct').value = parsed.sleepPct || '';
-    document.getElementById('ex-strain').value = parsed.strain || '';
-    document.getElementById('ex-strain-date').value = parsed.strainDate || '';
-
-    // Show save summary
-    const summaryEl = document.getElementById('save-summary-morning');
-    if (summaryEl) {
-      const d = new Date(ACTIVE_MORNING_DATE + 'T12:00:00');
-      summaryEl.textContent = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-    }
-
-    // Show activities if found
-    const actBlock = document.getElementById('ex-activities-block');
-    const actList = document.getElementById('ex-activities-list');
-    if (parsed.activities && parsed.activities.length) {
-      actList.innerHTML = parsed.activities.map(a => `
-        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px">
-          <span style="font-size:12px">${a.name}</span>
-          <span style="font-family:var(--mono);font-size:11px;color:var(--accent)">strain ${a.strain}</span>
-        </div>`).join('');
-      actBlock.style.display = 'block';
-    } else {
-      actBlock.style.display = 'none';
-    }
-
-    loading.style.display = 'none';
-    extracted.style.display = 'block';
-  } catch(err) {
-    loading.style.display = 'none';
-    extracted.style.display = 'block';
-    showToast('Could not auto-extract — fill in manually','err');
-  }
-};
-
-// ── MORNING LOG ──
-window.setRecoveryFeel = function(v) {
-  recoveryFeelVal = v;
-  document.querySelectorAll('#recovery-stars .star').forEach((s,i) => s.classList.toggle('on', i === v - 1));
-};
-
-window.saveMorningLog = async function() {
-  const hrv = parseFloat(document.getElementById('ex-hrv').value) || null;
-  const recovery = parseFloat(document.getElementById('ex-recovery').value) || null;
-  const deep = parseFloat(document.getElementById('ex-deep').value) || null;
-  const totalSleep = document.getElementById('ex-sleep').value || null;
-
-  if (!hrv && !recovery) { showToast('Please enter at least HRV or Recovery','err'); return; }
-  if (!DB_READY) { showToast('Still connecting — try again in a moment','err'); return; }
-
-  const btn = document.getElementById('btn-save-morning');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Saving…'; }
-
-  try {
-    // Save today's sleep/recovery data
-    await setDoc(doc(db, 'sleep_morning', ACTIVE_MORNING_DATE), {
-      date: ACTIVE_MORNING_DATE,
-      hrv, recovery, deep, totalSleep,
-      restingHR: parseFloat(document.getElementById('ex-rhr').value) || null,
-      sleepPct: parseFloat(document.getElementById('ex-sleeppct').value) || null,
-      recoveryFeel: recoveryFeelVal || null,
-      savedAt: new Date().toISOString()
-    });
-
-    // Save strain + activities to the strain date (yesterday's home screen date)
-    const strainDate = document.getElementById('ex-strain-date').value || null;
-    const strain = parseFloat(document.getElementById('ex-strain').value) || null;
-    const actItems = document.querySelectorAll('#ex-activities-list > div');
-    const activities = [];
-    actItems.forEach(el => {
-      const name = el.querySelector('span:first-child')?.textContent;
-      const strainText = el.querySelector('span:last-child')?.textContent?.replace('strain ','');
-      if (name) activities.push({ name, strain: parseFloat(strainText) || 0 });
-    });
-
-    if (strainDate && strain) {
-      await setDoc(doc(db, 'sleep_strain', strainDate), {
-        date: strainDate,
-        strain,
-        activities,
-        savedAt: new Date().toISOString()
-      });
-    }
-
-    await loadAllLogs();
-    renderStatStrip();
-    renderTrends();
-    showToast('Saved for ' + ACTIVE_MORNING_DATE + ' ✓', 'ok');
-
-    // Reset UI
-    document.getElementById('upload-zone').style.display = 'block';
-    document.getElementById('upload-preview').style.display = 'none';
-    document.getElementById('upload-preview').innerHTML = '';
-    document.getElementById('extracted-block').style.display = 'none';
-    document.getElementById('whoop-img-input').value = '';
-    document.getElementById('ex-rhr').value = '';
-    document.getElementById('ex-sleeppct').value = '';
-    document.getElementById('ex-strain').value = '';
-    document.getElementById('ex-strain-date').value = '';
-    document.getElementById('ex-activities-block').style.display = 'none';
-    document.getElementById('ex-activities-list').innerHTML = '';
-    recoveryFeelVal = 0;
-    document.querySelectorAll('#recovery-stars .star').forEach(s => s.classList.remove('on'));
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm & Save Morning Log ✓'; }
-
-  } catch(e) {
-    console.error('saveMorningLog error:', e);
-    showToast('Save failed: ' + e.message, 'err');
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm & Save Morning Log ✓'; }
-  }
-};
 
 // ── TRENDS ──
 let recoveryChart = null, sleepChart = null, rhrChart = null, strainChart = null;
