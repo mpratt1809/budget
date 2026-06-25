@@ -409,11 +409,11 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
             <div style="font-family:var(--mono);font-size:20px;color:var(--red)" id="cf-out">—</div>
             <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
               <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
-                <span style="color:var(--muted)">Fixed bills</span>
+                <span style="color:var(--muted)">Fixed Bills & Subscriptions</span>
                 <span id="cf-fixed">—</span>
               </div>
               <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
-                <span style="color:var(--muted)">Variable spending</span>
+                <span style="color:var(--muted)">Discretionary spending</span>
                 <span id="cf-variable">—</span>
               </div>
               <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;border-top:1px solid var(--border);padding-top:4px;margin-top:2px">
@@ -483,13 +483,6 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
             <div id="invest-list"></div>
             <div class="note note-purple" style="margin-top:12px">Click any value to update. 401k contributions active through employer match + Roth IRA contributions ongoing.</div>
           </div>
-        </div>
-        <div class="card" id="card-bills">
-          <div class="card-hd" onclick="toggleCard('card-bills')">
-            <div class="card-hd-left"><div class="card-icon" style="background:#4a9eff15">🏠</div><div class="card-title">Fixed Monthly Bills</div></div>
-            <div style="display:flex;align-items:center;gap:8px"><span class="card-badge badge-info" id="bills-badge">—</span><span class="chevron">▼</span></div>
-          </div>
-          <div class="card-body" id="bills-body"></div>
         </div>
       </div>
     </div>
@@ -687,6 +680,14 @@ async function initData() {
     await loadOtherIncome();
     await loadMerchantRules();
     await loadTransactionsForMonth(SELECTED_MONTH);
+    // Load any custom categories the user has created
+    try {
+      const catSnap = await getDoc(doc(db,'hub','custom_categories'));
+      if (catSnap.exists() && catSnap.data().categories) {
+        const custom = catSnap.data().categories;
+        custom.forEach(c => { if (!SPENDING_CATEGORIES.includes(c)) SPENDING_CATEGORIES.push(c); });
+      }
+    } catch(e) {}
     DB_READY = true;
     setSyncStatus('live');
     renderAll();
@@ -851,15 +852,8 @@ window.editInvestment = async function(id) {
 
 function renderBills() {
   const total = FIXED_BILLS.reduce((s,b)=>s+b.amt,0);
-  document.getElementById('stat-monthly-bills').textContent = '$'+total.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
-  document.getElementById('bills-badge').textContent = '$'+total.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0})+'/mo';
-  document.getElementById('bills-body').innerHTML = FIXED_BILLS.map(b=>`
-    <div class="row">
-      <div class="row-left"><div class="dot dot-muted"></div><div><div class="row-label">${b.name}</div><div class="row-sub">Due: ${b.due}</div></div></div>
-      <div class="row-right"><div class="row-amt">$${b.amt.toLocaleString('en-US',{minimumFractionDigits:2})}</div></div>
-    </div>`).join('') + `<div class="row" style="border-top:2px solid var(--border2);margin-top:4px;padding-top:10px">
-      <div class="row-left"><div class="row-label" style="font-weight:700">Total Fixed</div></div>
-      <div class="row-right"><div class="row-amt red" style="font-size:15px">$${total.toLocaleString('en-US',{minimumFractionDigits:2})}</div></div></div>`;
+  const statEl = document.getElementById('stat-monthly-bills');
+  if (statEl) statEl.textContent = '$'+total.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 }
 
 function renderPaycheckCalendar() {
@@ -1020,8 +1014,12 @@ function renderCashFlow() {
   const otherTotal = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0), 0);
   const totalIncome = paycheckTotal + otherTotal;
 
-  const fixedTotal = FIXED_BILLS.reduce((s,b)=>s+(b.amt||0), 0);
-  const variableTotal = CURRENT_MONTH_TRANSACTIONS.reduce((s,t)=>s+(t.amount||0), 0);
+  const fixedTotal = CURRENT_MONTH_TRANSACTIONS
+    .filter(t => t.category === 'Fixed Bill' || t.category === 'Subscription')
+    .reduce((s,t) => s+(t.amount||0), 0);
+  const variableTotal = CURRENT_MONTH_TRANSACTIONS
+    .filter(t => t.category !== 'Fixed Bill' && t.category !== 'Subscription')
+    .reduce((s,t) => s+(t.amount||0), 0);
   const totalOut = fixedTotal + variableTotal;
   const remaining = totalIncome - totalOut;
 
@@ -1133,13 +1131,16 @@ let MERCHANT_RULES = {}; // { "H-E-B": "Groceries", ... }
 let PENDING_REVIEW = null; // holds extracted data waiting for user confirmation
 let SELECTED_MONTH = new Date().toISOString().slice(0,7); // YYYY-MM, default current month
 
-const SPENDING_CATEGORIES = [
+let SPENDING_CATEGORIES = [
+  'Fixed Bill',
+  'Subscription',
   'Dining Out & Delivery',
   'Groceries',
   'Gas & Transportation',
   'Shopping & Amazon',
   'Pets',
   'Pharmacy & Health',
+  'Therapy',
   'Utilities & Bills',
   'Entertainment & Subscriptions',
   'Personal Care',
@@ -1147,12 +1148,15 @@ const SPENDING_CATEGORIES = [
 ];
 
 const CATEGORY_ICONS = {
+  'Fixed Bill': '🏠',
+  'Subscription': '🔄',
   'Dining Out & Delivery': '🍽️',
   'Groceries': '🛒',
   'Gas & Transportation': '⛽',
   'Shopping & Amazon': '🛍️',
   'Pets': '🐾',
   'Pharmacy & Health': '💊',
+  'Therapy': '🧠',
   'Utilities & Bills': '💡',
   'Entertainment & Subscriptions': '🎬',
   'Personal Care': '💅',
@@ -1359,8 +1363,9 @@ function showReviewScreen() {
           <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${tx.date}</div>
         </div>
         <span style="font-family:var(--mono);font-size:12px;color:var(--warn);white-space:nowrap">$${Number(tx.amount).toFixed(2)}</span>
-        <select onchange="setTxCategory(${p.transactions.indexOf(tx)}, this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:160px">
+        <select onchange="setTxCategory(${p.transactions.indexOf(tx)}, this.value, this)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:160px">
           ${SPENDING_CATEGORIES.map(cat => `<option value="${cat}" ${tx.category===cat?'selected':''}>${cat}</option>`).join('')}
+          <option value="__new__">+ New Category…</option>
         </select>
       </div>`).join('');
   }
@@ -1375,14 +1380,41 @@ function showReviewScreen() {
       </div>
       <span style="font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap">$${Number(tx.amount).toFixed(2)}</span>
       <span style="font-family:var(--mono);font-size:10px;color:var(--accent2);white-space:nowrap">${CATEGORY_ICONS[tx.category]||''} ${tx.category}</span>
-      <select onchange="setTxCategory(${p.transactions.indexOf(tx)}, this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:120px">
+      <select onchange="setTxCategory(${p.transactions.indexOf(tx)}, this.value, this)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:120px">
         ${SPENDING_CATEGORIES.map(cat => `<option value="${cat}" ${tx.category===cat?'selected':''}>${cat}</option>`).join('')}
+        <option value="__new__">+ New Category…</option>
       </select>
     </div>`).join('');
 }
 
-window.setTxCategory = function(index, category) {
+window.setTxCategory = function(index, category, selectEl) {
   if (!PENDING_REVIEW) return;
+  if (category === '__new__') {
+    const newCat = prompt('New category name:');
+    if (!newCat || !newCat.trim()) {
+      // Reset dropdown to previous value
+      if (selectEl) selectEl.value = PENDING_REVIEW.transactions[index].category;
+      return;
+    }
+    const trimmed = newCat.trim();
+    if (!SPENDING_CATEGORIES.includes(trimmed)) {
+      SPENDING_CATEGORIES.push(trimmed);
+      // Persist custom categories to Firestore
+      if (DB_READY) setDoc(doc(db,'hub','custom_categories'), {categories: SPENDING_CATEGORIES}, {merge:true});
+    }
+    PENDING_REVIEW.transactions[index].category = trimmed;
+    PENDING_REVIEW.transactions[index].manuallySet = true;
+    // Update the dropdown to show new category as selected
+    if (selectEl) {
+      const opt = document.createElement('option');
+      opt.value = trimmed;
+      opt.textContent = trimmed;
+      opt.selected = true;
+      selectEl.insertBefore(opt, selectEl.querySelector('option[value="__new__"]'));
+      selectEl.value = trimmed;
+    }
+    return;
+  }
   PENDING_REVIEW.transactions[index].category = category;
   PENDING_REVIEW.transactions[index].manuallySet = true;
 };
