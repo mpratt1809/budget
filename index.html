@@ -344,6 +344,49 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
       </div>
     </div>
 
+    <!-- ══ INCOME VS SPENDING SUMMARY ══ -->
+    <div class="card open" id="card-cashflow" style="margin-bottom:16px">
+      <div class="card-hd" onclick="toggleCard('card-cashflow')">
+        <div class="card-hd-left"><div class="card-icon" style="background:#4fc38a15">💰</div><div class="card-title">Monthly Cash Flow</div></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="card-badge badge-green" id="cashflow-badge">—</span><span class="chevron">▼</span></div>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Income This Month</div>
+            <div style="font-family:var(--mono);font-size:20px;color:var(--accent2)" id="cf-income">—</div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px" id="cf-income-sub">paychecks this month</div>
+            <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:6px">OTHER INCOME</div>
+              <div id="cf-other-income-list" style="display:flex;flex-direction:column;gap:4px"></div>
+              <button onclick="addOtherIncome()" style="font-family:var(--mono);font-size:9px;color:var(--muted);background:transparent;border:1px dashed var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;margin-top:6px;width:100%">+ Add income</button>
+            </div>
+          </div>
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Total Out</div>
+            <div style="font-family:var(--mono);font-size:20px;color:var(--red)" id="cf-out">—</div>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
+              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+                <span style="color:var(--muted)">Fixed bills</span>
+                <span id="cf-fixed">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+                <span style="color:var(--muted)">Variable spending</span>
+                <span id="cf-variable">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Remaining</div>
+            <div style="font-family:var(--mono);font-size:22px;font-weight:500" id="cf-remaining">—</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right" id="cf-remaining-sub"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="grid2">
       <div>
         <div class="card open" id="card-debt">
@@ -371,7 +414,7 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
         <div class="card open" id="card-spend">
           <div class="card-hd" onclick="toggleCard('card-spend')">
             <div class="card-hd-left"><div class="card-icon" style="background:#f0a04815">📊</div><div class="card-title">Spending Analyzer</div></div>
-            <div style="display:flex;align-items:center;gap:8px"><span class="card-badge badge-warn" id="spend-badge">Upload to analyze</span><span class="chevron">▼</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openUpload()" style="font-size:10px;padding:3px 8px">📄 Upload</button><span class="card-badge badge-warn" id="spend-badge">Upload to analyze</span><span class="chevron">▼</span></div>
           </div>
           <div class="card-body">
             <div id="spend-body">
@@ -595,6 +638,7 @@ async function initData() {
     SPENDING_ACCOUNTS = spendSnap.exists() ? spendSnap.data() : {};
     const taskSnap = await getDoc(doc(db,'hub','tasks'));
     if (taskSnap.exists()) Object.assign(TASKS, taskSnap.data());
+    await loadOtherIncome();
     DB_READY = true;
     setSyncStatus('live');
     renderAll();
@@ -639,7 +683,7 @@ async function saveSettings() { if(DB_READY) await setDoc(doc(db,'hub','settings
 function renderAll() {
   renderHeroDate(); renderDebts(); refreshDebtStats(); renderInvestments();
   renderBills(); renderPaycheckCalendar(); renderTimeline(); renderSpending();
-  renderTasksBoard(); renderSettingsIncome(); renderSettingsDebts();
+  renderCashFlow(); renderTasksBoard(); renderSettingsIncome(); renderSettingsDebts();
   renderSettingsBills(); renderSettingsInvestments(); renderCoverageOverview();
 }
 
@@ -862,7 +906,102 @@ function renderSpending() {
         <div class="spend-track"><div class="spend-target-line" style="left:${tpct}%"></div><div class="spend-actual ${over?'fill-red':c.actual/c.target>0.8?'fill-warn':'fill-green'}" style="width:${pct}%"></div></div>
       </div>`;
     }).join('');
+
+  // Refresh cash flow whenever spending changes
+  renderCashFlow();
 }
+
+// ── CASH FLOW ──
+let OTHER_INCOME = []; // [{label, amount}] — persisted to Firestore hub/cashflow
+
+async function loadOtherIncome() {
+  try {
+    const snap = await getDoc(doc(db,'hub','cashflow'));
+    OTHER_INCOME = snap.exists() ? (snap.data().otherIncome || []) : [];
+  } catch(e) { OTHER_INCOME = []; }
+}
+
+async function saveOtherIncome() {
+  if(DB_READY) await setDoc(doc(db,'hub','cashflow'), {otherIncome: OTHER_INCOME}, {merge:true});
+}
+
+function getPaychecksThisMonth() {
+  const anchor = new Date((SETTINGS.anchor || '2026-05-02')+'T00:00:00');
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  let count = 0;
+  // Walk all paycheck dates in this month
+  const d = new Date(anchor);
+  // Fast-forward to month start
+  while (d < monthStart) d.setDate(d.getDate()+14);
+  while (d <= monthEnd) { count++; d.setDate(d.getDate()+14); }
+  return count;
+}
+
+function renderCashFlow() {
+  const paycheck = SETTINGS.paycheck || 4358;
+  const paychecksThisMonth = getPaychecksThisMonth();
+  const paycheckTotal = paycheck * paychecksThisMonth;
+  const otherTotal = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0), 0);
+  const totalIncome = paycheckTotal + otherTotal;
+
+  const fixedTotal = FIXED_BILLS.reduce((s,b)=>s+(b.amt||0), 0);
+  const accounts = Object.values(SPENDING_ACCOUNTS).filter(a => a && a.categories && a.categories.length);
+  const variableTotal = accounts.reduce((s,a) => s + a.categories.reduce((cs,c)=>cs+c.actual,0), 0);
+  const totalOut = fixedTotal + variableTotal;
+  const remaining = totalIncome - totalOut;
+
+  // Update income side
+  document.getElementById('cf-income').textContent = '$'+paycheckTotal.toLocaleString('en-US',{maximumFractionDigits:0});
+  document.getElementById('cf-income-sub').textContent = `${paychecksThisMonth} paycheck${paychecksThisMonth!==1?'s':''} this month`;
+
+  // Other income list
+  const otherList = document.getElementById('cf-other-income-list');
+  if (otherList) {
+    otherList.innerHTML = OTHER_INCOME.map((item,i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px">
+        <span style="color:var(--muted)">${escHtml(item.label)}</span>
+        <span style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--accent2)">$${Number(item.amount).toLocaleString('en-US',{maximumFractionDigits:0})}</span>
+          <button onclick="removeOtherIncome(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:10px;padding:0">✕</button>
+        </span>
+      </div>`).join('');
+  }
+
+  // Update out side
+  document.getElementById('cf-out').textContent = '$'+Math.round(totalOut).toLocaleString('en-US');
+  document.getElementById('cf-fixed').textContent = '$'+Math.round(fixedTotal).toLocaleString('en-US');
+  document.getElementById('cf-variable').textContent = accounts.length ? '$'+Math.round(variableTotal).toLocaleString('en-US') : 'Upload statements';
+
+  // Remaining
+  const remEl = document.getElementById('cf-remaining');
+  const remSubEl = document.getElementById('cf-remaining-sub');
+  remEl.textContent = '$'+Math.abs(Math.round(remaining)).toLocaleString('en-US');
+  remEl.style.color = remaining >= 0 ? 'var(--accent2)' : 'var(--red)';
+  remSubEl.textContent = remaining >= 0 ? 'left over this month' : 'over budget this month';
+
+  // Badge
+  const badge = document.getElementById('cashflow-badge');
+  badge.textContent = remaining >= 0 ? '+$'+Math.round(remaining).toLocaleString('en-US') : '-$'+Math.abs(Math.round(remaining)).toLocaleString('en-US');
+  badge.className = 'card-badge ' + (remaining >= 0 ? 'badge-green' : 'badge-red');
+}
+
+window.addOtherIncome = function() {
+  const label = prompt('Income label (e.g. "Side project", "Rental income"):');
+  if (!label) return;
+  const amount = prompt('Monthly amount ($):');
+  if (!amount || isNaN(Number(amount))) return;
+  OTHER_INCOME.push({ label: label.trim(), amount: Number(amount) });
+  saveOtherIncome();
+  renderCashFlow();
+};
+
+window.removeOtherIncome = async function(index) {
+  OTHER_INCOME.splice(index, 1);
+  await saveOtherIncome();
+  renderCashFlow();
+};
 
 function renderTimeline() {
   const active = DEBTS.filter(d=>d.status!=='paid' && d.balance>0);
