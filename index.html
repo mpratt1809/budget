@@ -1064,7 +1064,7 @@ function renderTasksBoard() {
       </div>
       <div class="sticky-footer">
         <button class="add-task-btn" onclick="addTask('${b.id}')" style="color:${col.text}">+ Task</button>
-        ${done>0?`<span style="font-family:var(--mono);font-size:9px;color:${col.text}30;align-self:center;margin-left:auto">${done} done</span>`:''}
+        ${done>0?`<button style="font-family:var(--mono);font-size:9px;color:${col.text}40;background:transparent;border:none;cursor:pointer;margin-left:auto;padding:2px 4px;border-radius:4px" onclick="clearDoneTasks('${b.id}')" title="Remove completed tasks">🗑 Clear ${done} done</button>`:''}
       </div>`}
     </div>`;
   }).join('') + `<div class="add-board-btn" onclick="addBoard()">+ New Board</div>`;
@@ -1095,6 +1095,7 @@ window.toggleCollapse = async function(id){ const b=TASKS.boards.find(b=>b.id===
 window.addTask = async function(bid){ const b=TASKS.boards.find(b=>b.id===bid); if(!b) return; b.tasks.push({id:makeId(),text:'',done:false,due:'',priority:'none'}); await saveTasks(); renderTasksBoard(); setTimeout(()=>{ const ts=document.querySelectorAll(`#tasks-${bid} .task-text`); if(ts.length) ts[ts.length-1].focus(); },50); };
 window.deleteTask = async function(bid,tid){ const b=TASKS.boards.find(b=>b.id===bid); if(b){b.tasks=b.tasks.filter(t=>t.id!==tid); await saveTasks(); renderTasksBoard();} };
 window.toggleTask = async function(bid,tid){ const b=TASKS.boards.find(b=>b.id===bid); const t=b&&b.tasks.find(t=>t.id===tid); if(t){t.done=!t.done; await saveTasks(); renderTasksBoard();} };
+window.clearDoneTasks = async function(bid){ const b=TASKS.boards.find(b=>b.id===bid); if(!b) return; const count=b.tasks.filter(t=>t.done).length; if(!count) return; if(!confirm(`Remove ${count} completed task${count>1?'s':''} from "${b.title}"?`)) return; b.tasks=b.tasks.filter(t=>!t.done); await saveTasks(); renderTasksBoard(); showToast(`Cleared ${count} completed task${count>1?'s':''}`, 'ok'); };
 window.updateTaskText = async function(bid,tid,v){ const b=TASKS.boards.find(b=>b.id===bid); const t=b&&b.tasks.find(t=>t.id===tid); if(t){ t.text=v; await saveTasks(); } };
 window.cycleTaskPriority = async function(bid,tid){ const map={none:'high',high:'med',med:'low',low:'none'}; const b=TASKS.boards.find(b=>b.id===bid); const t=b&&b.tasks.find(t=>t.id===tid); if(t){t.priority=map[t.priority||'none']; await saveTasks(); renderTasksBoard();} };
 window.autoResize = function(el){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; };
