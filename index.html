@@ -383,6 +383,21 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
       </div>
     </div>
 
+    <!-- ══ EDIT TRANSACTIONS MODAL ══ -->
+    <div class="modal-bg" id="edit-modal">
+      <div class="modal modal-wide">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div class="modal-title" id="edit-modal-title" style="margin-bottom:0">✏️ Edit Transactions</div>
+          <button onclick="closeEditModal()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px" id="edit-modal-sub"></div>
+        <div id="edit-tx-list" style="display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+          <button class="btn btn-ghost" onclick="closeEditModal()">Done</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ INCOME VS SPENDING SUMMARY ══ -->
     <div class="card open" id="card-cashflow" style="margin-bottom:16px">
       <div class="card-hd" onclick="toggleCard('card-cashflow')">
@@ -460,7 +475,7 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
         <div class="card open" id="card-spend">
           <div class="card-hd" onclick="toggleCard('card-spend')">
             <div class="card-hd-left"><div class="card-icon" style="background:#f0a04815">📊</div><div class="card-title">Spending Analyzer</div></div>
-            <div style="display:flex;align-items:center;gap:8px"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openUpload()" style="font-size:10px;padding:3px 8px">📄 Upload</button><span class="card-badge badge-warn" id="spend-badge">Upload to analyze</span><span class="chevron">▼</span></div>
+            <div style="display:flex;align-items:center;gap:8px"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openUpload()" style="font-size:10px;padding:3px 8px">📄 Upload</button><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openEditModal()" style="font-size:10px;padding:3px 8px">✏️ Edit</button><span class="card-badge badge-warn" id="spend-badge">Upload to analyze</span><span class="chevron">▼</span></div>
           </div>
           <div class="card-body">
             <div id="spend-body">
@@ -1210,8 +1225,8 @@ window.handlePDFUpload = async function(file) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
-        system: `You are a financial data extraction assistant. Extract every individual transaction from this bank or credit card statement.
+        max_tokens: 8000,
+        system: `You are a financial data extraction assistant. Extract every individual transaction from this bank or credit card statement AND suggest the most appropriate spending category for each one.
 
 Return ONLY valid JSON, no markdown, no explanation, in this exact format:
 {
@@ -1220,12 +1235,27 @@ Return ONLY valid JSON, no markdown, no explanation, in this exact format:
   "statementStart": "YYYY-MM-DD",
   "statementEnd": "YYYY-MM-DD",
   "transactions": [
-    {"date": "YYYY-MM-DD", "merchant": "merchant name as shown", "amount": 12.34, "type": "charge"}
+    {"date": "YYYY-MM-DD", "merchant": "merchant name as shown", "amount": 12.34, "category": "Groceries"}
   ],
   "payments": [
     {"date": "YYYY-MM-DD", "description": "Payment - Thank You", "amount": 500.00}
   ]
 }
+
+Available categories (use EXACTLY one of these names):
+- Fixed Bill (mortgage, car payment, loan payments, rent, insurance premiums)
+- Subscription (Netflix, Hulu, Peacock, Spotify, Apple, Google, Amazon Prime, Sirius XM, Uber One, monthly app charges)
+- Dining Out & Delivery (restaurants, fast food, coffee shops, DoorDash, Uber Eats, Grubhub, bars)
+- Groceries (H-E-B, Costco, Walmart grocery, Whole Foods, Trader Joe's, Sprouts, food stores)
+- Gas & Transportation (gas stations including 7-Eleven, Shell, Circle K, Chevron, ExxonMobil, Uber, Lyft, NTTA, toll roads, parking)
+- Shopping & Amazon (Amazon, Target, Walmart general, online retail, clothing, home goods)
+- Pets (vet, PetSmart, Petco, pet supplies, pet grooming)
+- Pharmacy & Health (CVS, Walgreens, doctor visits, medical bills, prescriptions)
+- Therapy (therapy sessions, mental health providers, counseling)
+- Utilities & Bills (electric, water, gas utility, internet, phone, HOA)
+- Entertainment & Subscriptions (movies, concerts, games, activities)
+- Personal Care (salon, spa, haircut, beauty supplies, gym if not subscription)
+- Other (anything that genuinely doesn't fit above)
 
 Rules:
 - account: Use "boa" for Bank of America, "ufcu" for University Federal Credit Union, "chase" for Chase, "citi" for Citi. Otherwise "other".
@@ -1234,7 +1264,9 @@ Rules:
 - payments: ANY payment made TO the account (credits, payments received, returns/refunds). amount is always positive.
 - Do NOT include payments in transactions and vice versa.
 - Do NOT skip any transactions. Include ALL charges even small ones.
-- If a transaction date is ambiguous, use the most specific date shown.`,
+- Gas stations like 7-Eleven, Circle K, Wawa = Gas & Transportation unless clearly a food purchase.
+- Costco = Groceries unless it is clearly a gas charge (Costco Gas).
+- When in doubt between two categories, pick the more specific one over Other.`,
         messages: [{
           role: 'user',
           content: [
@@ -1259,13 +1291,18 @@ Rules:
     log.innerHTML += `<div class="log-line ok">✅ Found ${parsed.transactions.length} transactions · ${parsed.payments?.length||0} payments</div>`;
     log.innerHTML += '<div class="log-line info">🏷️ Applying merchant rules…</div>';
 
-    // Apply merchant rules — auto-categorize known merchants
+    // Apply merchant rules — your saved rules take priority over AI suggestions
     const autoTx = [], reviewTx = [];
     for (const tx of parsed.transactions) {
       const key = normalizeMerchant(tx.merchant);
       if (MERCHANT_RULES[key]) {
+        // Known merchant — use your saved rule, mark as auto-matched
         autoTx.push({ ...tx, category: MERCHANT_RULES[key], autoMatched: true });
+      } else if (tx.category && tx.category !== 'Other') {
+        // Unknown merchant but AI suggested a non-Other category — show in review with AI suggestion pre-selected
+        reviewTx.push({ ...tx, autoMatched: false });
       } else {
+        // Unknown merchant, AI said Other or no suggestion — needs review, default to Other
         reviewTx.push({ ...tx, category: 'Other', autoMatched: false });
       }
     }
@@ -1277,7 +1314,7 @@ Rules:
     const duplicateMonths = [];
     for (const month of affectedMonths) {
       try {
-        const existing = await getDoc(doc(db, 'hub/transactions', month));
+        const existing = await getDoc(doc(db, 'transactions', month));
         if (existing.exists()) {
           const existingTxs = existing.data().transactions || [];
           const hasThisAccount = existingTxs.some(t => t.account === parsed.account);
@@ -1363,7 +1400,7 @@ function showReviewScreen() {
           <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${tx.date}</div>
         </div>
         <span style="font-family:var(--mono);font-size:12px;color:var(--warn);white-space:nowrap">$${Number(tx.amount).toFixed(2)}</span>
-        <select onchange="setTxCategory(${p.transactions.indexOf(tx)}, this.value, this)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:160px">
+        <select data-idx="${p.transactions.indexOf(tx)}" onchange="setTxCategory(${p.transactions.indexOf(tx)}, this.value, this)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:160px">
           ${SPENDING_CATEGORIES.map(cat => `<option value="${cat}" ${tx.category===cat?'selected':''}>${cat}</option>`).join('')}
           <option value="__new__">+ New Category…</option>
         </select>
@@ -1380,7 +1417,7 @@ function showReviewScreen() {
       </div>
       <span style="font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap">$${Number(tx.amount).toFixed(2)}</span>
       <span style="font-family:var(--mono);font-size:10px;color:var(--accent2);white-space:nowrap">${CATEGORY_ICONS[tx.category]||''} ${tx.category}</span>
-      <select onchange="setTxCategory(${p.transactions.indexOf(tx)}, this.value, this)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:120px">
+      <select data-idx="${p.transactions.indexOf(tx)}" onchange="setTxCategory(${p.transactions.indexOf(tx)}, this.value, this)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:120px">
         ${SPENDING_CATEGORIES.map(cat => `<option value="${cat}" ${tx.category===cat?'selected':''}>${cat}</option>`).join('')}
         <option value="__new__">+ New Category…</option>
       </select>
@@ -1392,27 +1429,31 @@ window.setTxCategory = function(index, category, selectEl) {
   if (category === '__new__') {
     const newCat = prompt('New category name:');
     if (!newCat || !newCat.trim()) {
-      // Reset dropdown to previous value
       if (selectEl) selectEl.value = PENDING_REVIEW.transactions[index].category;
       return;
     }
     const trimmed = newCat.trim();
-    if (!SPENDING_CATEGORIES.includes(trimmed)) {
-      SPENDING_CATEGORIES.push(trimmed);
-      // Persist custom categories to Firestore
+    // Case-insensitive duplicate check
+    const existing = SPENDING_CATEGORIES.find(c => c.toLowerCase() === trimmed.toLowerCase());
+    const finalCat = existing || trimmed;
+    if (!existing) {
+      SPENDING_CATEGORIES.push(finalCat);
       if (DB_READY) setDoc(doc(db,'hub','custom_categories'), {categories: SPENDING_CATEGORIES}, {merge:true});
+      // Refresh ALL dropdowns on the review screen so the new category appears everywhere
+      document.querySelectorAll('#review-needs-list select, #review-auto-list select').forEach(sel => {
+        const currentVal = sel.value === '__new__'
+          ? PENDING_REVIEW.transactions[Number(sel.getAttribute('data-idx'))]?.category || 'Other'
+          : sel.value;
+        const newOpt = document.createElement('option');
+        newOpt.value = finalCat;
+        newOpt.textContent = finalCat;
+        sel.insertBefore(newOpt, sel.querySelector('option[value="__new__"]'));
+        sel.value = currentVal;
+      });
     }
-    PENDING_REVIEW.transactions[index].category = trimmed;
+    PENDING_REVIEW.transactions[index].category = finalCat;
     PENDING_REVIEW.transactions[index].manuallySet = true;
-    // Update the dropdown to show new category as selected
-    if (selectEl) {
-      const opt = document.createElement('option');
-      opt.value = trimmed;
-      opt.textContent = trimmed;
-      opt.selected = true;
-      selectEl.insertBefore(opt, selectEl.querySelector('option[value="__new__"]'));
-      selectEl.value = trimmed;
-    }
+    if (selectEl) selectEl.value = finalCat;
     return;
   }
   PENDING_REVIEW.transactions[index].category = category;
@@ -1475,7 +1516,7 @@ window.saveReviewedTransactions = async function() {
 
     // 3. Save each month's transactions to Firestore, merging with existing
     for (const [month, txs] of Object.entries(byMonth)) {
-      const ref = doc(db, 'hub/transactions', month);
+      const ref = doc(db, 'transactions', month);
       const existing = await getDoc(ref);
       const existingTxs = existing.exists() ? (existing.data().transactions || []) : [];
 
@@ -1500,7 +1541,7 @@ window.saveReviewedTransactions = async function() {
         payByMonth[month].push({ ...pm, account: p.account, accountLabel: p.accountLabel });
       }
       for (const [month, pms] of Object.entries(payByMonth)) {
-        const ref = doc(db, 'hub/payments', month);
+        const ref = doc(db, 'payments', month);
         const existing = await getDoc(ref);
         const existingPms = existing.exists() ? (existing.data().payments || []) : [];
         const otherPms = existingPms.filter(pm => pm.account !== p.account);
@@ -1530,15 +1571,92 @@ let CURRENT_MONTH_PAYMENTS = [];
 
 async function loadTransactionsForMonth(month) {
   try {
-    const txSnap = await getDoc(doc(db, 'hub/transactions', month));
+    const txSnap = await getDoc(doc(db, 'transactions', month));
     CURRENT_MONTH_TRANSACTIONS = txSnap.exists() ? (txSnap.data().transactions || []) : [];
-    const pmSnap = await getDoc(doc(db, 'hub/payments', month));
+    const pmSnap = await getDoc(doc(db, 'payments', month));
     CURRENT_MONTH_PAYMENTS = pmSnap.exists() ? (pmSnap.data().payments || []) : [];
   } catch(e) {
     CURRENT_MONTH_TRANSACTIONS = [];
     CURRENT_MONTH_PAYMENTS = [];
   }
 }
+
+// ── EDIT TRANSACTIONS MODAL ──
+window.openEditModal = async function() {
+  if (!CURRENT_MONTH_TRANSACTIONS.length) {
+    showToast('No transactions for this month yet', 'err');
+    return;
+  }
+  const [y, m] = SELECTED_MONTH.split('-').map(Number);
+  const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  document.getElementById('edit-modal-title').textContent = `✏️ Edit Transactions — ${monthLabel}`;
+  document.getElementById('edit-modal-sub').textContent = `${CURRENT_MONTH_TRANSACTIONS.length} transactions · click a category to change it`;
+  renderEditList();
+  document.getElementById('edit-modal').classList.add('open');
+};
+
+window.closeEditModal = function() {
+  document.getElementById('edit-modal').classList.remove('open');
+};
+
+function renderEditList() {
+  const sorted = [...CURRENT_MONTH_TRANSACTIONS].sort((a,b) => a.date.localeCompare(b.date));
+  document.getElementById('edit-tx-list').innerHTML = sorted.map((tx, i) => {
+    const origIdx = CURRENT_MONTH_TRANSACTIONS.indexOf(tx);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(tx.merchant)}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${tx.date} · ${tx.accountLabel||tx.account}</div>
+      </div>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap">$${Number(tx.amount).toFixed(2)}</span>
+      <select onchange="editTxCategory(${origIdx}, this.value, this)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:160px">
+        ${SPENDING_CATEGORIES.map(cat => `<option value="${cat}" ${tx.category===cat?'selected':''}>${cat}</option>`).join('')}
+        <option value="__new__">+ New Category…</option>
+      </select>
+    </div>`;
+  }).join('');
+}
+
+window.editTxCategory = async function(index, category, selectEl) {
+  if (category === '__new__') {
+    const newCat = prompt('New category name:');
+    if (!newCat || !newCat.trim()) { if (selectEl) selectEl.value = CURRENT_MONTH_TRANSACTIONS[index].category; return; }
+    const trimmed = newCat.trim();
+    const existing = SPENDING_CATEGORIES.find(c => c.toLowerCase() === trimmed.toLowerCase());
+    const finalCat = existing || trimmed;
+    if (!existing) {
+      SPENDING_CATEGORIES.push(finalCat);
+      if (DB_READY) setDoc(doc(db,'hub','custom_categories'), {categories: SPENDING_CATEGORIES}, {merge:true});
+    }
+    category = finalCat;
+  }
+
+  // Update in memory
+  CURRENT_MONTH_TRANSACTIONS[index].category = category;
+
+  // Save merchant rule
+  const key = normalizeMerchant(CURRENT_MONTH_TRANSACTIONS[index].merchant);
+  if (MERCHANT_RULES[key] !== category) {
+    MERCHANT_RULES[key] = category;
+    await saveMerchantRules();
+  }
+
+  // Save updated transactions to Firestore
+  try {
+    const ref = doc(db, 'transactions', SELECTED_MONTH);
+    const existing = await getDoc(ref);
+    const allTxs = existing.exists() ? (existing.data().transactions || []) : [];
+    // Replace the transaction with matching id
+    const tx = CURRENT_MONTH_TRANSACTIONS[index];
+    const updatedAll = allTxs.map(t => t.id === tx.id ? { ...t, category } : t);
+    await setDoc(ref, { transactions: updatedAll, updatedAt: new Date().toISOString() });
+    showToast('Category updated ✓', 'ok');
+    renderSpending();
+  } catch(e) {
+    console.error('editTxCategory error:', e);
+    showToast('Save failed: ' + e.message, 'err');
+  }
+};
 
 function fileToBase64(file) {
   return new Promise((res,rej) => {
