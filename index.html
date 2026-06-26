@@ -688,8 +688,6 @@ async function initData() {
     const settSnap = await getDoc(doc(db,'hub','settings'));
     if (settSnap.exists()) Object.assign(SETTINGS, settSnap.data());
     else await setDoc(doc(db,'hub','settings'), DEFAULT_SETTINGS);
-    const spendSnap = await getDoc(doc(db,'hub','spending_accounts'));
-    SPENDING_ACCOUNTS = spendSnap.exists() ? spendSnap.data() : {};
     const taskSnap = await getDoc(doc(db,'hub','tasks'));
     if (taskSnap.exists()) Object.assign(TASKS, taskSnap.data());
     await loadOtherIncome();
@@ -968,7 +966,7 @@ function renderSpending() {
           <span class="spend-bar-nums"><span style="color:var(--text)">$${Math.round(c.actual*100)/100}</span> <span style="color:var(--muted);font-size:10px">${pct.toFixed(0)}% of spending</span></span>
         </div>
         <div class="spend-track"><div class="spend-actual fill-green" style="width:${pct}%"></div></div>
-        <div id="cat-detail-${c.name.replace(/\W+/g,'_')}" style="display:none;margin-top:6px;display:none">
+        <div id="cat-detail-${c.name.replace(/\W+/g,'_')}" style="display:none;margin-top:6px">
           ${c.txs.map(t=>`<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);padding:2px 0">
             <span>${t.date} · ${escHtml(t.merchant)}</span><span>$${t.amount.toFixed(2)}</span>
           </div>`).join('')}
@@ -1012,7 +1010,7 @@ function getPaychecksForMonth(yearMonth) {
   return count;
 }
 
-function shiftSelectedMonth(dir) {
+window.shiftSelectedMonth = function(dir) {
   const [y, m] = SELECTED_MONTH.split('-').map(Number);
   const d = new Date(y, m-1+dir, 1);
   SELECTED_MONTH = d.toISOString().slice(0,7);
@@ -1020,7 +1018,7 @@ function shiftSelectedMonth(dir) {
     renderCashFlow();
     renderSpending();
   });
-}
+};
 
 function renderCashFlow() {
   const paycheck = SETTINGS.paycheck || 4358;
@@ -1092,7 +1090,7 @@ function renderCashFlow() {
     navEl.innerHTML = `
       <button onclick="shiftSelectedMonth(-1)" style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;width:26px;height:26px;cursor:pointer">‹</button>
       <span style="font-family:var(--mono);font-size:11px;color:var(--text)">${monthLabel}</span>
-      <button onclick="shiftSelectedMonth(1)" ${isCurrentMonth?'disabled style="opacity:0.3;cursor:default"':'style="cursor:pointer"'} style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;width:26px;height:26px">›</button>
+      <button onclick="shiftSelectedMonth(1)" ${isCurrentMonth?'disabled':''} style="background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;width:26px;height:26px;cursor:pointer;opacity:${isCurrentMonth?'0.3':'1'}">›</button>
     `;
   }
 }
@@ -1698,12 +1696,13 @@ GOALS: Pay off all consumer debt by end of 2026 (except Subaru). Debt-free date 
 Currently attacking SoFi ($29K). Affirm loans running at 0% until Jan 2027.
 401k contributing up to employer match. Roth IRA contributions ongoing.
 ${(() => {
-  const accts = Object.values(SPENDING_ACCOUNTS).filter(a=>a&&a.categories);
-  if (!accts.length) return '';
-  const merged = {};
-  accts.forEach(a => a.categories.forEach(c => { merged[c.name] = (merged[c.name]||0) + c.actual; }));
-  const lines = accts.map(a => `${a.accountLabel||a.account} (${a.month||'?'})`).join(', ');
-  return `SPENDING (accounts: ${lines}): ` + Object.entries(merged).map(([n,v])=>n+': $'+v).join(', ');
+  const txs = CURRENT_MONTH_TRANSACTIONS;
+  if (!txs.length) return '';
+  const byCategory = {};
+  txs.forEach(t => { byCategory[t.category||'Other'] = (byCategory[t.category||'Other']||0) + t.amount; });
+  const [y, m] = SELECTED_MONTH.split('-').map(Number);
+  const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  return `SPENDING (${monthLabel}, ${txs.length} transactions): ` + Object.entries(byCategory).map(([n,v])=>n+': $'+Math.round(v)).join(', ');
 })()}`;
   try {
     const res = await fetch(WORKER_URL, {
