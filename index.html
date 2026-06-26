@@ -1554,10 +1554,10 @@ window.saveReviewedTransactions = async function() {
     // 2. Bucket transactions by real calendar month (transaction date, not statement month)
     const byMonth = {};
     for (const tx of p.transactions) {
-      const month = tx.date.slice(0,7); // YYYY-MM
+      const month = tx.date.slice(0,7);
       if (!byMonth[month]) byMonth[month] = [];
       byMonth[month].push({
-        id: `${p.account}_${tx.date}_${tx.merchant.slice(0,20)}_${tx.amount}`.replace(/\s+/g,'_'),
+        id: `${p.account}_${tx.date}_${tx.merchant.slice(0,20).replace(/\s+/g,'_')}_${tx.amount}`,
         date: tx.date,
         merchant: tx.merchant,
         amount: Number(tx.amount),
@@ -1567,38 +1567,49 @@ window.saveReviewedTransactions = async function() {
       });
     }
 
-    // 3. Save each month's transactions to Firestore, merging with existing
+    // 3. Save each month's transactions — merge by transaction ID so overlapping
+    // statements don't wipe each other's data
     for (const [month, txs] of Object.entries(byMonth)) {
       const ref = doc(db, 'transactions', month);
       const existing = await getDoc(ref);
       const existingTxs = existing.exists() ? (existing.data().transactions || []) : [];
 
-      // Overwrite any transactions from this same account for this month
-      // (in case of re-upload), keep transactions from other accounts
-      const otherAcctTxs = existingTxs.filter(t => t.account !== p.account);
-      const merged = [...otherAcctTxs, ...txs];
+      // Build a map of existing transactions by ID
+      const txMap = {};
+      for (const t of existingTxs) txMap[t.id] = t;
+
+      // New transactions overwrite existing ones with the same ID (re-upload updates category)
+      // but don't remove transactions from other date ranges of the same account
+      for (const t of txs) txMap[t.id] = t;
 
       await setDoc(ref, {
-        transactions: merged,
+        transactions: Object.values(txMap),
         updatedAt: new Date().toISOString()
       });
     }
 
-    // 4. Save payments separately
+    // 4. Save payments — merge by ID so overlapping statements don't wipe each other
     const payments = p.payments || [];
     if (payments.length) {
       const payByMonth = {};
       for (const pm of payments) {
         const month = pm.date.slice(0,7);
         if (!payByMonth[month]) payByMonth[month] = [];
-        payByMonth[month].push({ ...pm, account: p.account, accountLabel: p.accountLabel });
+        payByMonth[month].push({
+          ...pm,
+          id: `${p.account}_${pm.date}_${(pm.description||'').slice(0,20).replace(/\s+/g,'_')}_${pm.amount}`,
+          account: p.account,
+          accountLabel: p.accountLabel
+        });
       }
       for (const [month, pms] of Object.entries(payByMonth)) {
         const ref = doc(db, 'payments', month);
         const existing = await getDoc(ref);
         const existingPms = existing.exists() ? (existing.data().payments || []) : [];
-        const otherPms = existingPms.filter(pm => pm.account !== p.account);
-        await setDoc(ref, { payments: [...otherPms, ...pms], updatedAt: new Date().toISOString() });
+        const pmMap = {};
+        for (const pm of existingPms) pmMap[pm.id || `${pm.account}_${pm.date}_${pm.amount}`] = pm;
+        for (const pm of pms) pmMap[pm.id] = pm;
+        await setDoc(ref, { payments: Object.values(pmMap), updatedAt: new Date().toISOString() });
       }
     }
 
