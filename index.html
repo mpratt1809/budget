@@ -1589,7 +1589,7 @@ window.saveReviewedTransactions = async function() {
       });
     }));
 
-    // 4. Save payments — parallel reads then parallel writes
+    // 4. Save payments — write directly without read-merge to avoid timeouts
     const payments = p.payments || [];
     if (payments.length) {
       btn.textContent = `Writing deposits…`;
@@ -1604,19 +1604,16 @@ window.saveReviewedTransactions = async function() {
           accountLabel: p.accountLabel
         });
       }
-      const payMonths = Object.keys(payByMonth);
-      const existingPayDocs = await Promise.all(
-        payMonths.map(month => getDoc(doc(db, 'payments', month)))
-      );
-      await Promise.all(payMonths.map((month, i) => {
-        const existingPms = existingPayDocs[i].exists() ? (existingPayDocs[i].data().payments || []) : [];
+      // Use setDoc with merge:true to upsert without reading first
+      await Promise.all(Object.entries(payByMonth).map(([month, pms]) => {
+        // Build a map keyed by ID for this upload only
         const pmMap = {};
-        for (const pm of existingPms) pmMap[pm.id || `${pm.account}_${pm.date}_${pm.amount}`] = pm;
-        for (const pm of payByMonth[month]) pmMap[pm.id] = pm;
+        for (const pm of pms) pmMap[pm.id] = pm;
+        // We use a sub-field keyed by account to avoid overwriting other accounts' payments
         return setDoc(doc(db, 'payments', month), {
-          payments: Object.values(pmMap),
+          [`by_account_${p.account}`]: Object.values(pmMap),
           updatedAt: new Date().toISOString()
-        });
+        }, { merge: true });
       }));
     }
 
@@ -1642,11 +1639,27 @@ let CURRENT_MONTH_PAYMENTS = [];
 
 async function loadTransactionsForMonth(month) {
   try {
-    const txSnap = await getDoc(doc(db, 'transactions', month));
+    const [txSnap, pmSnap] = await Promise.all([
+      getDoc(doc(db, 'transactions', month)),
+      getDoc(doc(db, 'payments', month))
+    ]);
     CURRENT_MONTH_TRANSACTIONS = txSnap.exists() ? (txSnap.data().transactions || []) : [];
-    const pmSnap = await getDoc(doc(db, 'payments', month));
-    CURRENT_MONTH_PAYMENTS = pmSnap.exists() ? (pmSnap.data().payments || []) : [];
+    // Payments now stored per-account as by_account_boa, by_account_ufcu etc.
+    // Flatten all account arrays into one combined list
+    if (pmSnap.exists()) {
+      const data = pmSnap.data();
+      const allPms = [];
+      // Support both old format (payments array) and new format (by_account_* fields)
+      if (data.payments) allPms.push(...data.payments);
+      for (const [key, val] of Object.entries(data)) {
+        if (key.startsWith('by_account_') && Array.isArray(val)) allPms.push(...val);
+      }
+      CURRENT_MONTH_PAYMENTS = allPms;
+    } else {
+      CURRENT_MONTH_PAYMENTS = [];
+    }
   } catch(e) {
+    console.error('loadTransactionsForMonth error:', e);
     CURRENT_MONTH_TRANSACTIONS = [];
     CURRENT_MONTH_PAYMENTS = [];
   }
@@ -1692,8 +1705,15 @@ function renderEditPaymentsList() {
 window.editPaymentType = async function(index, type) {
   CURRENT_MONTH_PAYMENTS[index].type = type;
   try {
-    const ref = doc(db, 'payments', SELECTED_MONTH);
-    await setDoc(ref, { payments: CURRENT_MONTH_PAYMENTS, updatedAt: new Date().toISOString() });
+    // Find which account this payment belongs to
+    const pm = CURRENT_MONTH_PAYMENTS[index];
+    const acct = pm.account || 'other';
+    // Get all payments for this account in this month
+    const acctPms = CURRENT_MONTH_PAYMENTS.filter(p => (p.account || 'other') === acct);
+    await setDoc(doc(db, 'payments', SELECTED_MONTH), {
+      [`by_account_${acct}`]: acctPms,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
     renderCashFlow();
     showToast('Updated ✓', 'ok');
   } catch(e) {
