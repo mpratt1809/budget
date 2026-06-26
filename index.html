@@ -1240,31 +1240,52 @@ Return ONLY valid JSON, no markdown, no explanation, in this exact format:
   ]
 }
 
-Available categories (use EXACTLY one of these names):
-- Fixed Bill (mortgage, car payment, loan payments, rent, insurance premiums)
-- Subscription (Netflix, Hulu, Peacock, Spotify, Apple, Google, Amazon Prime, Sirius XM, Uber One, monthly app charges)
-- Dining Out & Delivery (restaurants, fast food, coffee shops, DoorDash, Uber Eats, Grubhub, bars)
-- Groceries (H-E-B, Costco, Walmart grocery, Whole Foods, Trader Joe's, Sprouts, food stores)
-- Gas & Transportation (gas stations including 7-Eleven, Shell, Circle K, Chevron, ExxonMobil, Uber, Lyft, NTTA, toll roads, parking)
+CRITICAL — Determine account type first:
+- If this is a CHECKING or DEBIT account (Bank of America checking, UFCU checking): 
+  * transactions = ALL withdrawals/debits/purchases/payments OUT (debit card purchases, bill payments, Zelle sent, ACH payments out). Amount always positive.
+  * payments = ALL deposits/credits coming IN (paychecks, direct deposits, Zelle received, refunds, transfers in, FSA reimbursements). Amount always positive.
+  * Do NOT put credit card payments (Chase EPAY, Citi payment, SoFi payment, Synchrony) in transactions — they belong in payments as money leaving.
+  * WAIT — for checking accounts, payments OUT to credit cards ARE withdrawals — put them in transactions as "Fixed Bill" category.
+
+- If this is a CREDIT CARD statement (Chase, Citi, Discover):
+  * transactions = ALL charges/purchases. Amount always positive.
+  * payments = payments made TO the card (credits, payments received). Amount always positive.
+
+CATEGORY RULES (use EXACTLY one of these):
+- Fixed Bill (mortgage/NSM/MR.COOPER, car payment, loan payments like SoFi/Affirm, HOA, insurance, utilities like electric/gas/water/internet/phone)
+- Subscription (Netflix, Peacock, Spotify, Apple, Google, Amazon Prime, Sirius XM, Uber One, WHOOP, Steam, recurring app charges)
+- Dining Out & Delivery (restaurants, fast food, coffee, DoorDash, Uber Eats, bars — TST* prefix = restaurant)
+- Groceries (H-E-B, Costco, Walmart grocery, Whole Foods, Trader Joe's, Sprouts)
+- Gas & Transportation (gas stations including 7-Eleven, Shell, Circle K, NTTA, toll roads, parking, Uber/Lyft rides)
 - Shopping & Amazon (Amazon, Target, Walmart general, online retail, clothing, home goods)
-- Pets (vet, PetSmart, Petco, pet supplies, pet grooming)
-- Pharmacy & Health (CVS, Walgreens, doctor visits, medical bills, prescriptions)
-- Therapy (therapy sessions, mental health providers, counseling)
-- Utilities & Bills (electric, water, gas utility, internet, phone, HOA)
-- Entertainment & Subscriptions (movies, concerts, games, activities)
-- Personal Care (salon, spa, haircut, beauty supplies, gym if not subscription)
+- Pets (vet, PetSmart, Petco, pet supplies)
+- Pharmacy & Health (CVS, Walgreens, doctor visits, medical bills, prescriptions, Austin Radiological)
+- Therapy (JESSIE WHITE, SimplTX, therapy/counseling providers)
+- Utilities & Bills (already covered by Fixed Bill — use Fixed Bill instead)
+- Entertainment & Subscriptions (movies, concerts, games, activities, Paramount Theatre)
+- Personal Care (salon, spa, haircut, beauty, dry cleaning like Westbank)
+- Transfer (Zelle sent to individuals, Venmo payments, transfers between own accounts — NOT spending)
 - Other (anything that genuinely doesn't fit above)
 
+IMPORTANT SPECIAL CASES for this account:
+- JESSIE WHITE / SimplTX = Therapy
+- NSM / MR.COOPER / DBAMR = Fixed Bill (mortgage)
+- NTTA AUTOCHARGE = Fixed Bill (toll)
+- T-MOBILE = Fixed Bill (phone)
+- City of Austin = Fixed Bill (utilities)
+- CPENERGY / Bluebonnet = Fixed Bill (electric/gas)
+- SoFi / AFFIRM = Fixed Bill (loan payment)
+- EASTON PARK = Fixed Bill (HOA)
+- KEEP THE CHANGE = skip entirely (do not include — it is an internal bank rounding feature)
+- Zelle payment TO someone = Transfer category
+- Payroll/FERROVIAL = skip (goes in payments as income)
+- EMPLOYEE BENEFIT/EBC = skip (goes in payments as FSA reimbursement)
+
 Rules:
-- account: Use "boa" for Bank of America, "ufcu" for University Federal Credit Union, "chase" for Chase, "citi" for Citi. Otherwise "other".
-- statementStart/End: The actual date range covered by this statement (read from statement header).
-- transactions: EVERY charge/debit/purchase. amount is always positive. date is the transaction date (not posting date if both shown). merchant is the raw merchant name as printed.
-- payments: ANY payment made TO the account (credits, payments received, returns/refunds). amount is always positive.
-- Do NOT include payments in transactions and vice versa.
-- Do NOT skip any transactions. Include ALL charges even small ones.
-- Gas stations like 7-Eleven, Circle K, Wawa = Gas & Transportation unless clearly a food purchase.
-- Costco = Groceries unless it is clearly a gas charge (Costco Gas).
-- When in doubt between two categories, pick the more specific one over Other.`,
+- amount is always positive regardless of direction
+- date is the transaction date
+- Do NOT skip any real transactions
+- KEEP THE CHANGE transfers should be excluded entirely`,
         messages: [{
           role: 'user',
           content: [
