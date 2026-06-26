@@ -625,7 +625,7 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
 const ALLOWED_EMAIL = "mpratt1809@gmail.com";
@@ -1566,30 +1566,33 @@ window.saveReviewedTransactions = async function() {
       });
     }
 
-    // 3. Save each month's transactions — merge by transaction ID
+    // 3. Save transactions — parallel reads then parallel writes
     const months = Object.keys(byMonth);
-    btn.textContent = `Saving 0/${months.length} months…`;
-    let monthIdx = 0;
-    for (const [month, txs] of Object.entries(byMonth)) {
-      monthIdx++;
-      btn.textContent = `Saving ${monthIdx}/${months.length} months…`;
-      try {
-        const ref = doc(db, 'transactions', month);
-        const existing = await getDoc(ref);
-        const existingTxs = existing.exists() ? (existing.data().transactions || []) : [];
-        const txMap = {};
-        for (const t of existingTxs) txMap[t.id] = t;
-        for (const t of txs) txMap[t.id] = t;
-        await setDoc(ref, { transactions: Object.values(txMap), updatedAt: new Date().toISOString() });
-      } catch(monthErr) {
-        console.error(`Failed saving transactions for ${month}:`, monthErr);
-        throw new Error(`Failed saving ${month}: ${monthErr.message}`);
-      }
-    }
+    btn.textContent = `Reading existing data…`;
 
-    // 4. Save payments — merge by ID so overlapping statements don't wipe each other
+    // Read all affected months in parallel
+    const existingDocs = await Promise.all(
+      months.map(month => getDoc(doc(db, 'transactions', month)))
+    );
+
+    btn.textContent = `Writing transactions…`;
+
+    // Merge and write all months in parallel
+    await Promise.all(months.map((month, i) => {
+      const existingTxs = existingDocs[i].exists() ? (existingDocs[i].data().transactions || []) : [];
+      const txMap = {};
+      for (const t of existingTxs) txMap[t.id] = t;
+      for (const t of byMonth[month]) txMap[t.id] = t;
+      return setDoc(doc(db, 'transactions', month), {
+        transactions: Object.values(txMap),
+        updatedAt: new Date().toISOString()
+      });
+    }));
+
+    // 4. Save payments — parallel reads then parallel writes
     const payments = p.payments || [];
     if (payments.length) {
+      btn.textContent = `Writing deposits…`;
       const payByMonth = {};
       for (const pm of payments) {
         const month = pm.date.slice(0,7);
@@ -1601,15 +1604,20 @@ window.saveReviewedTransactions = async function() {
           accountLabel: p.accountLabel
         });
       }
-      for (const [month, pms] of Object.entries(payByMonth)) {
-        const ref = doc(db, 'payments', month);
-        const existing = await getDoc(ref);
-        const existingPms = existing.exists() ? (existing.data().payments || []) : [];
+      const payMonths = Object.keys(payByMonth);
+      const existingPayDocs = await Promise.all(
+        payMonths.map(month => getDoc(doc(db, 'payments', month)))
+      );
+      await Promise.all(payMonths.map((month, i) => {
+        const existingPms = existingPayDocs[i].exists() ? (existingPayDocs[i].data().payments || []) : [];
         const pmMap = {};
         for (const pm of existingPms) pmMap[pm.id || `${pm.account}_${pm.date}_${pm.amount}`] = pm;
-        for (const pm of pms) pmMap[pm.id] = pm;
-        await setDoc(ref, { payments: Object.values(pmMap), updatedAt: new Date().toISOString() });
-      }
+        for (const pm of payByMonth[month]) pmMap[pm.id] = pm;
+        return setDoc(doc(db, 'payments', month), {
+          payments: Object.values(pmMap),
+          updatedAt: new Date().toISOString()
+        });
+      }));
     }
 
     // 5. Refresh the cash flow display
