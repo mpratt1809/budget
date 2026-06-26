@@ -1253,83 +1253,82 @@ window.handlePDFUpload = async function(file) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 8000,
-        system: `You are a financial data extraction assistant. Extract every individual transaction from this bank or credit card statement AND suggest the most appropriate spending category for each one.
+        system: `You are a financial data extraction assistant. Extract every transaction from this bank or credit card statement.
 
-Return ONLY valid JSON, no markdown, no explanation, in this exact format:
+Return ONLY valid JSON, no markdown:
 {
   "account": "boa|ufcu|chase|citi|other",
   "accountLabel": "Bank of America|UFCU|Chase Marriott|Citi|<detected name>",
   "statementStart": "YYYY-MM-DD",
   "statementEnd": "YYYY-MM-DD",
-  "transactions": [
-    {"date": "YYYY-MM-DD", "merchant": "merchant name as shown", "amount": 12.34, "category": "Groceries"}
-  ],
-  "payments": [
-    {"date": "YYYY-MM-DD", "description": "Payment - Thank You", "amount": 500.00, "type": "Transfer"}
-  ]
+  "transactions": [{"date": "YYYY-MM-DD", "merchant": "merchant name", "amount": 12.34, "category": "Groceries"}],
+  "payments": [{"date": "YYYY-MM-DD", "description": "description", "amount": 500.00, "type": "Paycheck"}]
 }
 
-PAYMENT TYPES — classify every deposit/credit coming INTO the account with one of these:
-- Paycheck (employer payroll — Ferrovial, direct deposit from employer)
-- FSA (FSA/HSA reimbursements — Employee Benefit EBC, insurance reimbursements)
-- CheckDeposit (paper checks deposited — mobile check deposits, year-end bonuses paid by check, tax refunds by check, reimbursements)
-- TransferIn (money moved FROM your own other accounts INTO this account — savings withdrawal, brokerage transfer like Wealthfront, bank-to-bank transfer in)
-- CreditCardPayment (THIS IS AN OUTGOING PAYMENT — credit card payments leaving checking: Chase EPAY, Citi payment, Discover payment, Synchrony — put these in payments with negative context but positive amount)
+═══ STEP 1: IDENTIFY ACCOUNT TYPE ═══
 
-TRANSACTION RULES — what goes in transactions vs payments:
-- ALL withdrawals/debits/purchases = transactions (with category)
-- Zelle payments TO other people = transactions, category "Transfer Out"
-- Savings transfers OUT = transactions, category "Transfer Out"  
-- ALL deposits/credits coming in = payments (with type above)
-- NEVER put credit card payments (Chase EPAY, Citi, Discover, Synchrony) in transactions — they go in payments as type CreditCardPayment
-- NEVER put paychecks/FSA/deposits in transactions — they go in payments
+CHECKING/DEBIT ACCOUNT (Bank of America, UFCU):
+• transactions array = ONLY money leaving the account (withdrawals, purchases, debit card charges, ACH payments out, Zelle sent, bill payments, credit card payments, savings transfers out, loan payments)
+• payments array = ONLY money coming INTO the account (direct deposits, paychecks, Zelle received from others, tax refunds, FSA reimbursements, transfers from your own savings, overdraft protection)
 
-CRITICAL — Determine account type first:
-- If this is a CHECKING or DEBIT account (Bank of America checking, UFCU checking): 
-  * transactions = ALL withdrawals/debits/purchases/payments OUT (debit card purchases, bill payments, Zelle sent, ACH payments out). Amount always positive.
-  * payments = ALL deposits/credits coming IN (paychecks, direct deposits, Zelle received, refunds, transfers in, FSA reimbursements). Amount always positive.
-  * Do NOT put credit card payments (Chase EPAY, Citi payment, SoFi payment, Synchrony) in transactions — they belong in payments as money leaving.
-  * WAIT — for checking accounts, payments OUT to credit cards ARE withdrawals — put them in transactions as "Fixed Bill" category.
+CREDIT CARD ACCOUNT (Chase, Citi, Discover, Synchrony):
+• transactions array = charges/purchases made on the card
+• payments array = payments made TO the card to pay it down
 
-- If this is a CREDIT CARD statement (Chase, Citi, Discover):
-  * transactions = ALL charges/purchases. Amount always positive.
-  * payments = payments made TO the card (credits, payments received). Amount always positive.
+═══ STEP 2: FOR CHECKING ACCOUNTS — CRITICAL RULES ═══
 
-CATEGORY RULES (use EXACTLY one of these):
-- Fixed Bill (mortgage/NSM/MR.COOPER, car payment, loan payments like SoFi/Affirm, HOA, insurance, utilities like electric/gas/water/internet/phone)
-- Subscription (Netflix, Peacock, Spotify, Apple, Google, Amazon Prime, Sirius XM, Uber One, WHOOP, Steam, recurring app charges)
-- Dining Out & Delivery (restaurants, fast food, coffee, DoorDash, Uber Eats, bars — TST* prefix = restaurant)
-- Groceries (H-E-B, Costco, Walmart grocery, Whole Foods, Trader Joe's, Sprouts)
-- Gas & Transportation (gas stations including 7-Eleven, Shell, Circle K, NTTA, toll roads, parking, Uber/Lyft rides)
-- Shopping & Amazon (Amazon, Target, Walmart general, online retail, clothing, home goods)
-- Pets (vet, PetSmart, Petco, pet supplies)
-- Pharmacy & Health (CVS, Walgreens, doctor visits, medical bills, prescriptions, Austin Radiological)
-- Therapy (JESSIE WHITE, SimplTX, therapy/counseling providers)
-- Utilities & Bills (already covered by Fixed Bill — use Fixed Bill instead)
-- Entertainment & Subscriptions (movies, concerts, games, activities, Paramount Theatre)
-- Personal Care (salon, spa, haircut, beauty, dry cleaning like Westbank)
-- Transfer (Zelle sent to individuals, Venmo payments, transfers between own accounts — NOT spending)
-- Other (anything that genuinely doesn't fit above)
+GOES IN transactions (money OUT):
+✓ All debit card purchases, ATM withdrawals
+✓ CHASE CREDIT CRD EPAY → transactions, category "Fixed Bill" (credit card payment out)
+✓ DISCOVER E-PAYMENT → transactions, category "Fixed Bill"
+✓ Synchrony Bank CC PYMT → transactions, category "Fixed Bill"
+✓ Citi Card Online Payment → transactions, category "Fixed Bill"
+✓ SoFi Bank PL PYMT → transactions, category "Fixed Bill"
+✓ AFFIRM.COM PAYME → transactions, category "Fixed Bill"
+✓ ROCKET MORTGAGE / NSM / MR.COOPER → transactions, category "Fixed Bill"
+✓ EASTON PARK (HOA) → transactions, category "Fixed Bill"
+✓ T-MOBILE → transactions, category "Fixed Bill"
+✓ CPENERGY / Bluebonnet → transactions, category "Fixed Bill"
+✓ City of Austin payments → transactions, category "Fixed Bill"
+✓ Online Banking transfer TO SAV → transactions, category "Transfer Out"
+✓ Zelle payment TO someone → transactions, category "Transfer Out"
+✓ Venmo payment → transactions, category "Transfer Out"
+✓ INVESCO investment → transactions, category "Transfer Out"
+✓ KEEP THE CHANGE → SKIP entirely (internal bank feature, exclude from both arrays)
+✓ Service fees → transactions, category "Fixed Bill"
+✓ CRUNCH FIT → transactions, category "Subscription"
+✓ LINKEDIN → transactions, category "Subscription"
 
-IMPORTANT SPECIAL CASES for this account:
+GOES IN payments (money IN):
+✓ FERROVIAL HOLDIN PAYROLL → payments, type "Paycheck"
+✓ EMPLOYEE BENEFIT EBC → payments, type "FSA"
+✓ SBTPG PRODUCTS (tax refund processor) → payments, type "CheckDeposit"
+✓ Online Banking transfer FROM SAV → payments, type "TransferIn"
+✓ Zelle payment FROM someone else → payments, type "CheckDeposit" (income from others)
+✓ Overdraft protection transfer → payments, type "TransferIn"
+✓ Transfer VENMO (incoming) → payments, type "CheckDeposit"
+✓ D.J.'S SNOWMOBILE (checkcard credit/refund) → payments, type "CheckDeposit"
+✓ BKOFAMERICA MOBILE DEPOSIT → payments, type "CheckDeposit"
+
+═══ STEP 3: SPENDING CATEGORIES ═══
+Fixed Bill | Subscription | Dining Out & Delivery | Groceries | Gas & Transportation | Shopping & Amazon | Pets | Pharmacy & Health | Therapy | Entertainment & Subscriptions | Personal Care | Transfer Out | Other
+
+SPECIFIC MERCHANTS:
 - JESSIE WHITE / SimplTX = Therapy
-- NSM / MR.COOPER / DBAMR = Fixed Bill (mortgage)
-- NTTA AUTOCHARGE = Fixed Bill (toll)
-- T-MOBILE = Fixed Bill (phone)
-- City of Austin = Fixed Bill (utilities)
-- CPENERGY / Bluebonnet = Fixed Bill (electric/gas)
-- SoFi / AFFIRM = Fixed Bill (loan payment)
-- EASTON PARK = Fixed Bill (HOA)
-- KEEP THE CHANGE = skip entirely (do not include — it is an internal bank rounding feature)
-- Zelle payment TO someone = Transfer category
-- Payroll/FERROVIAL = skip (goes in payments as income)
-- EMPLOYEE BENEFIT/EBC = skip (goes in payments as FSA reimbursement)
+- NTTA AUTOCHARGE = Gas & Transportation  
+- TST* prefix = Dining Out & Delivery
+- 7-ELEVEN = Gas & Transportation (unless clearly food only)
+- PEOPLES PHARMA = Pharmacy & Health
+- ANTHROPIC = Subscription
+- SP+AFF / BOARDSMIT = Subscription
+- WHOOP = Subscription
+- STRONG PAWS DONATION = Other
+- SEAT ENGINE = Entertainment & Subscriptions
+- HOBBYLOBBY = Shopping & Amazon
+- BOULDIN ACRES = Dining Out & Delivery
+- SHORTWAVE EAST = Entertainment & Subscriptions
 
-Rules:
-- amount is always positive regardless of direction
-- date is the transaction date
-- Do NOT skip any real transactions
-- KEEP THE CHANGE transfers should be excluded entirely`,
+Rules: amount always positive. Use transaction date not posting date.`,
         messages: [{
           role: 'user',
           content: [
@@ -1567,25 +1566,25 @@ window.saveReviewedTransactions = async function() {
       });
     }
 
-    // 3. Save each month's transactions — merge by transaction ID so overlapping
-    // statements don't wipe each other's data
+    // 3. Save each month's transactions — merge by transaction ID
+    const months = Object.keys(byMonth);
+    btn.textContent = `Saving 0/${months.length} months…`;
+    let monthIdx = 0;
     for (const [month, txs] of Object.entries(byMonth)) {
-      const ref = doc(db, 'transactions', month);
-      const existing = await getDoc(ref);
-      const existingTxs = existing.exists() ? (existing.data().transactions || []) : [];
-
-      // Build a map of existing transactions by ID
-      const txMap = {};
-      for (const t of existingTxs) txMap[t.id] = t;
-
-      // New transactions overwrite existing ones with the same ID (re-upload updates category)
-      // but don't remove transactions from other date ranges of the same account
-      for (const t of txs) txMap[t.id] = t;
-
-      await setDoc(ref, {
-        transactions: Object.values(txMap),
-        updatedAt: new Date().toISOString()
-      });
+      monthIdx++;
+      btn.textContent = `Saving ${monthIdx}/${months.length} months…`;
+      try {
+        const ref = doc(db, 'transactions', month);
+        const existing = await getDoc(ref);
+        const existingTxs = existing.exists() ? (existing.data().transactions || []) : [];
+        const txMap = {};
+        for (const t of existingTxs) txMap[t.id] = t;
+        for (const t of txs) txMap[t.id] = t;
+        await setDoc(ref, { transactions: Object.values(txMap), updatedAt: new Date().toISOString() });
+      } catch(monthErr) {
+        console.error(`Failed saving transactions for ${month}:`, monthErr);
+        throw new Error(`Failed saving ${month}: ${monthErr.message}`);
+      }
     }
 
     // 4. Save payments — merge by ID so overlapping statements don't wipe each other
