@@ -1307,34 +1307,6 @@ Rules:
 
     log.innerHTML += `<div class="log-line ok">✅ ${autoTx.length} auto-categorized · ${reviewTx.length} need review</div>`;
 
-    // Check for duplicate — warn if this account already has transactions for any affected months
-    const affectedMonths = [...new Set(parsed.transactions.map(t => t.date.slice(0,7)))];
-    const duplicateMonths = [];
-    for (const month of affectedMonths) {
-      try {
-        const existing = await getDoc(doc(db, 'transactions', month));
-        if (existing.exists()) {
-          const existingTxs = existing.data().transactions || [];
-          const hasThisAccount = existingTxs.some(t => t.account === parsed.account);
-          if (hasThisAccount) duplicateMonths.push(month);
-        }
-      } catch(e) {}
-    }
-
-    if (duplicateMonths.length > 0) {
-      const monthLabels = duplicateMonths.map(m => {
-        const [y,mo] = m.split('-').map(Number);
-        return new Date(y, mo-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
-      }).join(', ');
-      const proceed = confirm(
-        `⚠️ You've already uploaded a ${parsed.accountLabel} statement covering ${monthLabels}.\n\nContinuing will replace those transactions with this upload.\n\nContinue anyway?`
-      );
-      if (!proceed) {
-        log.innerHTML += '<div class="log-line info">↩️ Upload cancelled.</div>';
-        return;
-      }
-    }
-
     // Store for review
     PENDING_REVIEW = { ...parsed, transactions: [...autoTx, ...reviewTx], autoCount: autoTx.length, reviewCount: reviewTx.length };
 
