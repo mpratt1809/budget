@@ -1431,15 +1431,21 @@ window.setTxCategory = function(index, category, selectEl) {
       SPENDING_CATEGORIES.push(finalCat);
       if (DB_READY) setDoc(doc(db,'hub','custom_categories'), {categories: SPENDING_CATEGORIES}, {merge:true});
       // Refresh ALL dropdowns on the review screen so the new category appears everywhere
+      // Use a flag to prevent onchange cascade when restoring values
       document.querySelectorAll('#review-needs-list select, #review-auto-list select').forEach(sel => {
-        const currentVal = sel.value === '__new__'
-          ? PENDING_REVIEW.transactions[Number(sel.getAttribute('data-idx'))]?.category || 'Other'
+        const idx = Number(sel.getAttribute('data-idx'));
+        const txCat = (!isNaN(idx) && PENDING_REVIEW.transactions[idx])
+          ? PENDING_REVIEW.transactions[idx].category
           : sel.value;
+        const restoreVal = (sel.value === '__new__' || !txCat) ? finalCat : txCat;
         const newOpt = document.createElement('option');
         newOpt.value = finalCat;
         newOpt.textContent = finalCat;
         sel.insertBefore(newOpt, sel.querySelector('option[value="__new__"]'));
-        sel.value = currentVal;
+        // Set value directly without triggering onchange
+        sel.onchange = null;
+        sel.value = restoreVal;
+        sel.onchange = function() { setTxCategory(idx, this.value, this); };
       });
     }
     PENDING_REVIEW.transactions[index].category = finalCat;
