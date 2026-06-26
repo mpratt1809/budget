@@ -167,9 +167,33 @@ canvas{width:100%!important;height:120px!important}
 .insight-icon{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#9d8df7);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
 .insight-title{font-size:14px;font-weight:600}
 .insight-sub{font-family:var(--mono);font-size:10px;color:var(--muted)}
-.insight-response{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:13px;line-height:1.7;min-height:60px;color:var(--text);display:none}
+.insight-response{display:none}
 .insight-response.visible{display:block}
-.insight-response.loading{color:var(--muted)}
+
+/* Chat messages */
+.chat-msg{margin-bottom:10px;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg-user{display:flex;justify-content:flex-end}
+.chat-msg-user .chat-bubble{background:var(--accent);color:#fff;border-radius:14px 14px 4px 14px;padding:10px 14px;font-size:13px;max-width:85%;line-height:1.5}
+.chat-msg-ai .chat-bubble{background:var(--card);border:1px solid var(--border);border-radius:4px 14px 14px 14px;padding:12px 14px;font-size:13px;line-height:1.7;max-width:100%}
+.chat-msg-ai.loading .chat-bubble{color:var(--muted)}
+
+/* Formatted insight sections */
+.insight-section{margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.insight-section:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.insight-section-header{font-size:13px;font-weight:600;margin-bottom:6px}
+.insight-section-body{font-size:12px;line-height:1.7;color:var(--muted)}
+
+/* Window selector pills */
+.window-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.window-pill{font-family:var(--mono);font-size:9px;letter-spacing:1px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;transition:all .15s}
+.window-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* Chat input */
+.chat-input-row{display:flex;gap:8px;margin-top:10px}
+.chat-input-row input{flex:1;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:var(--sans);font-size:13px;padding:10px 14px;outline:none;transition:border-color .2s}
+.chat-input-row input:focus{border-color:var(--accent)}
+.chat-input-row input::placeholder{color:var(--muted)}
 
 /* ── LOG HISTORY ── */
 .log-entry{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px}
@@ -444,16 +468,47 @@ canvas{width:100%!important;height:120px!important}
         <div class="insight-icon">✦</div>
         <div>
           <div class="insight-title">Sleep Intelligence</div>
-          <div class="insight-sub">Pattern analysis · Personalized suggestions</div>
+          <div class="insight-sub" id="ai-window-label">Last 14 days · pattern analysis</div>
         </div>
       </div>
-      <button class="btn btn-primary" onclick="runWeeklyInsights()" id="btn-insights" style="margin-bottom:12px">
+
+      <!-- Window selector -->
+      <div class="window-pills">
+        <div class="window-pill" onclick="setInsightWindow(7,this)">7 days</div>
+        <div class="window-pill active" onclick="setInsightWindow(14,this)">14 days</div>
+        <div class="window-pill" onclick="setInsightWindow(30,this)">30 days</div>
+        <div class="window-pill" onclick="setInsightWindow(60,this)">60 days</div>
+      </div>
+
+      <!-- Analyze button -->
+      <button class="btn btn-primary" onclick="runInsightAnalysis()" id="btn-insights" style="width:100%;margin-bottom:14px">
         Analyze My Patterns ✦
       </button>
+
+      <!-- Quick question chips -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="window-pill" onclick="askInsightQuestion('What patterns do you see between my strain and next-day HRV?')" style="cursor:pointer">Strain → HRV</div>
+        <div class="window-pill" onclick="askInsightQuestion('How does alcohol affect my sleep quality and recovery?')" style="cursor:pointer">Alcohol impact</div>
+        <div class="window-pill" onclick="askInsightQuestion('Does beating the eating cutoff improve my deep sleep?')" style="cursor:pointer">Eating cutoff</div>
+        <div class="window-pill" onclick="askInsightQuestion('What bedtime gives me the best recovery score?')" style="cursor:pointer">Best bedtime</div>
+        <div class="window-pill" onclick="askInsightQuestion('What is my biggest opportunity to improve HRV?')" style="cursor:pointer">Improve HRV</div>
+      </div>
+
+      <!-- Chat history -->
+      <div id="insight-chat" style="display:flex;flex-direction:column;gap:2px;max-height:420px;overflow-y:auto;margin-bottom:4px"></div>
       <div class="insight-response" id="insight-resp"></div>
+
+      <!-- Chat input -->
+      <div class="chat-input-row">
+        <input type="text" id="insight-q" placeholder="Ask anything about your sleep data…" onkeydown="if(event.key==='Enter')askInsightQuestion()">
+        <button class="btn btn-primary" onclick="askInsightQuestion()" style="padding:10px 16px;white-space:nowrap">Ask ✦</button>
+      </div>
     </div>
-    <div class="note note-purple">✦ AI looks at your last 14 days of sleep logs, HRV, eating window data, and pre-bed habits to find what's actually moving the needle for you.</div>
-    <div style="margin-top:12px;font-family:var(--mono);font-size:9px;color:var(--muted);text-align:center">Needs 7+ days of data for meaningful analysis</div>
+
+    <div class="note note-purple">✦ AI analyzes your sleep logs, HRV, eating window, stress, and strain data. The more days you track, the sharper the insights.</div>
+    <div style="margin-top:8px;display:flex;justify-content:flex-end">
+      <button onclick="clearInsightChat()" style="font-family:var(--mono);font-size:9px;color:var(--muted);background:transparent;border:none;cursor:pointer">Clear chat</button>
+    </div>
 
     <!-- SLEEP SETTINGS -->
     <div class="card" style="margin-top:16px">
@@ -1030,23 +1085,20 @@ async function renderStreaks(sorted) {
 }
 
 
-// ── AI INSIGHTS ──
-window.runWeeklyInsights = async function() {
-  const btn = document.getElementById('btn-insights');
-  const resp = document.getElementById('insight-resp');
+// ── AI INSIGHTS CHAT ──
+let insightWindow = 14; // days
+let insightHistory = []; // conversation history for multi-turn
 
-  if (allLogs.length < 3) { showToast('Need at least 3 days of data','err'); return; }
+window.setInsightWindow = function(days, el) {
+  insightWindow = days;
+  document.querySelectorAll('.window-pill').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('ai-window-label').textContent = `Last ${days} days · pattern analysis`;
+};
 
-  btn.disabled = true;
-  btn.innerHTML = '<div class="spinner"></div> Analyzing…';
-  resp.className = 'insight-response visible loading';
-  resp.textContent = 'Reading your patterns…';
-
-  // Gather eating data
-  const sorted = [...allLogs].sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
-  let eatingData = [];
-  let nightData = [];
-  let strainData = [];
+async function gatherSleepData(days) {
+  const sorted = [...allLogs].sort((a,b)=>a.date.localeCompare(b.date)).slice(-days);
+  const eatingData = [], nightData = [], strainData = [];
   for (const l of sorted) {
     const eSnap = await getDoc(doc(db,'sleep_eating',l.date));
     if (eSnap.exists()) eatingData.push({date:l.date,...eSnap.data()});
@@ -1055,13 +1107,151 @@ window.runWeeklyInsights = async function() {
     const sSnap = await getDoc(doc(db,'sleep_strain',l.date));
     if (sSnap.exists()) strainData.push({date:l.date,...sSnap.data()});
   }
+  return { days, morningLogs: sorted, eatingLogs: eatingData, nightLogs: nightData, strainLogs: strainData };
+}
 
-  const summary = {
-    morningLogs: sorted,
-    eatingLogs: eatingData,
-    nightLogs: nightData,
-    strainLogs: strainData
+function buildSystemPrompt(data) {
+  return `You are a concise, direct sleep and HRV coach. You have access to ${data.days} days of the user's tracking data.
+
+DATA:
+Morning logs (HRV, recovery, sleep, strain): ${JSON.stringify(data.morningLogs)}
+Eating cutoff logs: ${JSON.stringify(data.eatingLogs)}
+Night logs (bedtime, stress, alcohol): ${JSON.stringify(data.nightLogs)}
+Strain logs: ${JSON.stringify(data.strainLogs)}
+
+RESPONSE FORMAT — always use this structure, no exceptions:
+- Use short emoji section headers (e.g. "🧠 HRV Pattern", "😴 Sleep Quality", "⚡ Recommendation")
+- Each section: 1-3 sentences MAX. Be specific, reference actual numbers.
+- Bullet points for lists, never long paragraphs.
+- Total response under 250 words.
+- If asked a specific question, answer it directly first, then add one brief supporting insight.`;
+}
+
+function addChatMessage(role, content, isLoading = false) {
+  const chat = document.getElementById('insight-chat');
+  const div = document.createElement('div');
+  div.className = `chat-msg chat-msg-${role}${isLoading ? ' loading' : ''}`;
+
+  if (role === 'user') {
+    div.innerHTML = `<div class="chat-bubble">${escHtml(content)}</div>`;
+  } else {
+    // Format AI response — split on emoji headers into sections
+    const formatted = formatInsightResponse(content);
+    div.innerHTML = `<div class="chat-bubble">${formatted}</div>`;
+  }
+
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function formatInsightResponse(text) {
+  if (!text) return '';
+  // Split on lines that start with an emoji
+  const lines = text.split('\n');
+  let html = '';
+  let inSection = false;
+  let sectionBody = '';
+
+  const flushSection = (header) => {
+    if (inSection && sectionBody.trim()) {
+      html += `<div class="insight-section">
+        ${header ? `<div class="insight-section-header">${escHtml(header)}</div>` : ''}
+        <div class="insight-section-body">${sectionBody.trim().replace(/\n/g,'<br>')}</div>
+      </div>`;
+    }
   };
+
+  let currentHeader = null;
+  for (const line of lines) {
+    // Detect emoji header lines (start with emoji character)
+    const isHeader = /^[\u{1F300}-\u{1FFFF}]|^[\u2600-\u26FF]|^[\u2700-\u27BF]/u.test(line.trim()) && line.trim().length < 60;
+    if (isHeader) {
+      flushSection(currentHeader);
+      currentHeader = line.trim();
+      sectionBody = '';
+      inSection = true;
+    } else {
+      sectionBody += (sectionBody ? '\n' : '') + line;
+    }
+  }
+  flushSection(currentHeader);
+
+  // If no sections were detected, just render as plain formatted text
+  if (!html) {
+    html = `<div class="insight-section-body">${escHtml(text).replace(/\n/g,'<br>')}</div>`;
+  }
+
+  return html;
+}
+
+window.runInsightAnalysis = async function() {
+  if (allLogs.length < 3) { showToast('Need at least 3 days of data','err'); return; }
+
+  const btn = document.getElementById('btn-insights');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Analyzing…';
+
+  const data = await gatherSleepData(insightWindow);
+  const systemPrompt = buildSystemPrompt(data);
+
+  const prompt = `Analyze my last ${insightWindow} days of sleep data. Give me 3-4 specific insights about what patterns you see and what's most affecting my HRV and recovery. Reference actual numbers where possible.`;
+
+  addChatMessage('user', prompt);
+  const loadingMsg = addChatMessage('ai', 'Reading your patterns…', true);
+
+  try {
+    insightHistory = []; // fresh analysis resets conversation
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 600,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const d = await response.json();
+    const text = d.content?.map(c=>c.text||'').join('') || 'Analysis failed — try again.';
+    loadingMsg.remove();
+    addChatMessage('ai', text);
+    insightHistory = [
+      { role: 'user', content: prompt },
+      { role: 'assistant', content: text }
+    ];
+  } catch(e) {
+    loadingMsg.remove();
+    addChatMessage('ai', 'Analysis failed — try again.');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Analyze My Patterns ✦';
+};
+
+window.askInsightQuestion = async function(presetQ) {
+  const input = document.getElementById('insight-q');
+  const q = presetQ || input.value.trim();
+  if (!q) return;
+  if (allLogs.length < 3) { showToast('Need at least 3 days of data','err'); return; }
+
+  input.value = '';
+  addChatMessage('user', q);
+  const loadingMsg = addChatMessage('ai', 'Thinking…', true);
+
+  // Build data context if this is the first message in the conversation
+  let systemPrompt;
+  if (insightHistory.length === 0) {
+    const data = await gatherSleepData(insightWindow);
+    systemPrompt = buildSystemPrompt(data);
+  } else {
+    // Reuse cached system prompt from existing conversation
+    const data = await gatherSleepData(insightWindow);
+    systemPrompt = buildSystemPrompt(data);
+  }
+
+  insightHistory.push({ role: 'user', content: q });
 
   try {
     const response = await fetch(WORKER_URL, {
@@ -1069,25 +1259,27 @@ window.runWeeklyInsights = async function() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: `You are a sleep and HRV coach. Analyze this data from my last ${sorted.length} days of tracking and give me 3-4 specific, actionable insights. Be conversational, direct, and specific — reference the actual numbers. Focus on patterns between eating cutoff, bedtime consistency, stress, alcohol, workout strain, and HRV/deep sleep outcomes. Look for correlations like whether high strain days affect next-day HRV, whether beating the 8 PM eating cutoff improves deep sleep, and whether stress levels correlate with recovery %. Format as short paragraphs with emoji headers. If data is limited, say so and give general guidance. Data: ${JSON.stringify(summary)}`
-        }]
+        max_tokens: 400,
+        system: systemPrompt,
+        messages: insightHistory
       })
     });
-    const data = await response.json();
-    const text = data.content.map(c=>c.text||'').join('');
-    resp.textContent = text;
-    resp.className = 'insight-response visible';
-  } catch(e) {
-    resp.textContent = 'Analysis failed — try again.';
-    resp.className = 'insight-response visible';
-    showToast('Analysis failed','err');
-  }
 
-  btn.disabled = false;
-  btn.innerHTML = 'Analyze My Patterns ✦';
+    const d = await response.json();
+    const text = d.content?.map(c=>c.text||'').join('') || 'Could not get a response — try again.';
+    loadingMsg.remove();
+    addChatMessage('ai', text);
+    insightHistory.push({ role: 'assistant', content: text });
+  } catch(e) {
+    loadingMsg.remove();
+    addChatMessage('ai', 'Request failed — try again.');
+    insightHistory.pop();
+  }
+};
+
+window.clearInsightChat = function() {
+  document.getElementById('insight-chat').innerHTML = '';
+  insightHistory = [];
 };
 
 // ── UTILS ──
