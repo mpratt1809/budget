@@ -354,7 +354,7 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 
           <!-- Payments section -->
           <div id="review-payments-section" style="display:none;margin-bottom:16px">
-            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">💳 Payments / Credits</div>
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">💰 Deposits & Credits — classify each one</div>
             <div id="review-payments-list" style="display:flex;flex-direction:column;gap:4px"></div>
           </div>
 
@@ -386,12 +386,18 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
     <!-- ══ EDIT TRANSACTIONS MODAL ══ -->
     <div class="modal-bg" id="edit-modal">
       <div class="modal modal-wide">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div class="modal-title" id="edit-modal-title" style="margin-bottom:0">✏️ Edit Transactions</div>
           <button onclick="closeEditModal()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
         </div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px" id="edit-modal-sub"></div>
-        <div id="edit-tx-list" style="display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto"></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:12px" id="edit-modal-sub"></div>
+        <!-- Tab nav -->
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button id="edit-tab-tx" onclick="switchEditTab('tx')" style="font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer">Transactions</button>
+          <button id="edit-tab-pay" onclick="switchEditTab('pay')" style="font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer">Deposits & Income</button>
+        </div>
+        <div id="edit-tx-list" style="display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto"></div>
+        <div id="edit-pay-list" style="display:none;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
           <button class="btn btn-ghost" onclick="closeEditModal()">Done</button>
         </div>
@@ -434,6 +440,10 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
               <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;border-top:1px solid var(--border);padding-top:4px;margin-top:2px">
                 <span style="color:var(--muted)">Card payments made</span>
                 <span id="cf-payments" style="color:var(--accent2)">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-top:2px">
+                <span style="color:var(--muted)">Transfers (neutral)</span>
+                <span id="cf-transfers" style="color:var(--muted)">—</span>
               </div>
             </div>
           </div>
@@ -1005,7 +1015,11 @@ function getPaychecksForMonth(yearMonth) {
   const monthEnd = new Date(year, month, 0);
   let count = 0;
   const d = new Date(anchor);
+  // Walk backward if anchor is after the target month
+  while (d > monthEnd) d.setDate(d.getDate()-14);
+  // Walk forward if anchor is before the target month
   while (d < monthStart) d.setDate(d.getDate()+14);
+  // Count paychecks within the month
   while (d <= monthEnd) { count++; d.setDate(d.getDate()+14); }
   return count;
 }
@@ -1021,11 +1035,25 @@ window.shiftSelectedMonth = function(dir) {
 };
 
 function renderCashFlow() {
-  const paycheck = SETTINGS.paycheck || 4358;
-  const paychecksThisMonth = getPaychecksForMonth(SELECTED_MONTH);
-  const paycheckTotal = paycheck * paychecksThisMonth;
-  const otherTotal = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0), 0);
-  const totalIncome = paycheckTotal + otherTotal;
+  // Income from real typed payment data
+  const paycheckTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'Paycheck')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  const fsaTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'FSA')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  const otherIncomeFromPayments = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'Income')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  const otherIncomeManual = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0), 0);
+  const transferTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'Transfer')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  const cardPaymentTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'CreditCardPayment')
+    .reduce((s,p) => s+(p.amount||0), 0);
+
+  const totalIncome = paycheckTotal + fsaTotal + otherIncomeFromPayments + otherIncomeManual;
 
   const fixedTotal = CURRENT_MONTH_TRANSACTIONS
     .filter(t => t.category === 'Fixed Bill' || t.category === 'Subscription')
@@ -1041,11 +1069,19 @@ function renderCashFlow() {
   const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
   const isCurrentMonth = SELECTED_MONTH === new Date().toISOString().slice(0,7);
 
-  // Update income side
-  document.getElementById('cf-income').textContent = '$'+paycheckTotal.toLocaleString('en-US',{maximumFractionDigits:0});
-  document.getElementById('cf-income-sub').textContent = `${paychecksThisMonth} paycheck${paychecksThisMonth!==1?'s':''} · ${monthLabel}`;
+  // Income side
+  const incomeBreakdown = [
+    paycheckTotal > 0 ? `${CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='Paycheck').length} paycheck${CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='Paycheck').length!==1?'s':''}` : '',
+    fsaTotal > 0 ? `FSA $${Math.round(fsaTotal)}` : '',
+    otherIncomeFromPayments > 0 ? `other $${Math.round(otherIncomeFromPayments)}` : ''
+  ].filter(Boolean).join(' · ') || 'No income data yet — upload statements';
 
-  // Other income list
+  document.getElementById('cf-income').textContent = totalIncome > 0
+    ? '$'+Math.round(totalIncome).toLocaleString('en-US')
+    : '$0';
+  document.getElementById('cf-income-sub').textContent = incomeBreakdown;
+
+  // Other income list (manual additions)
   const otherList = document.getElementById('cf-other-income-list');
   if (otherList) {
     otherList.innerHTML = OTHER_INCOME.map((item,i) => `
@@ -1058,19 +1094,20 @@ function renderCashFlow() {
       </div>`).join('');
   }
 
-  // Update out side
+  // Out side
   document.getElementById('cf-out').textContent = '$'+Math.round(totalOut).toLocaleString('en-US');
   document.getElementById('cf-fixed').textContent = '$'+Math.round(fixedTotal).toLocaleString('en-US');
   document.getElementById('cf-variable').textContent = CURRENT_MONTH_TRANSACTIONS.length
     ? '$'+Math.round(variableTotal).toLocaleString('en-US')
     : 'No statements yet';
 
-  // Payments section
-  const pmTotal = CURRENT_MONTH_PAYMENTS.reduce((s,p)=>s+(p.amount||0), 0);
+  // Card payments row
   const pmEl = document.getElementById('cf-payments');
-  if (pmEl) {
-    pmEl.textContent = CURRENT_MONTH_PAYMENTS.length ? '$'+Math.round(pmTotal).toLocaleString('en-US') : '—';
-  }
+  if (pmEl) pmEl.textContent = cardPaymentTotal > 0 ? '$'+Math.round(cardPaymentTotal).toLocaleString('en-US') : '—';
+
+  // Transfers row (neutral — shown for awareness, not counted against budget)
+  const trEl = document.getElementById('cf-transfers');
+  if (trEl) trEl.textContent = transferTotal > 0 ? '$'+Math.round(transferTotal).toLocaleString('en-US') : '—';
 
   // Remaining
   const remEl = document.getElementById('cf-remaining');
@@ -1081,10 +1118,12 @@ function renderCashFlow() {
 
   // Badge + month nav
   const badge = document.getElementById('cashflow-badge');
-  badge.textContent = remaining >= 0 ? '+$'+Math.round(remaining).toLocaleString('en-US') : '-$'+Math.abs(Math.round(remaining)).toLocaleString('en-US');
+  badge.textContent = remaining >= 0
+    ? '+$'+Math.round(remaining).toLocaleString('en-US')
+    : '-$'+Math.abs(Math.round(remaining)).toLocaleString('en-US');
   badge.className = 'card-badge ' + (remaining >= 0 ? 'badge-green' : 'badge-red');
 
-  // Month nav buttons
+  // Month nav
   const navEl = document.getElementById('cf-month-nav');
   if (navEl) {
     navEl.innerHTML = `
@@ -1236,9 +1275,16 @@ Return ONLY valid JSON, no markdown, no explanation, in this exact format:
     {"date": "YYYY-MM-DD", "merchant": "merchant name as shown", "amount": 12.34, "category": "Groceries"}
   ],
   "payments": [
-    {"date": "YYYY-MM-DD", "description": "Payment - Thank You", "amount": 500.00}
+    {"date": "YYYY-MM-DD", "description": "Payment - Thank You", "amount": 500.00, "type": "Transfer"}
   ]
 }
+
+PAYMENT TYPES — classify every deposit/credit with one of these:
+- Paycheck (employer payroll deposits — Ferrovial, direct deposit from employer)
+- FSA (FSA/HSA reimbursements — Employee Benefit EBC, insurance reimbursements)
+- Income (other real income — freelance, refunds from merchants, interest)
+- Transfer (moving your own money — savings withdrawals, Zelle from yourself, mobile check deposits of your own funds, Wealthfront/brokerage transfers, bank-to-bank transfers)
+- CreditCardPayment (outgoing credit card payments from checking — Chase EPAY, Citi payment, Discover payment, Synchrony — these are money LEAVING your checking account)
 
 CRITICAL — Determine account type first:
 - If this is a CHECKING or DEBIT account (Bank of America checking, UFCU checking): 
@@ -1358,13 +1404,20 @@ function showReviewScreen() {
   const paymentsSection = document.getElementById('review-payments-section');
   if (payments.length) {
     paymentsSection.style.display = 'block';
-    document.getElementById('review-payments-list').innerHTML = payments.map(pm => `
-      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:7px 10px">
-        <div>
-          <div style="font-size:12px">${escHtml(pm.description||'Payment')}</div>
+    document.getElementById('review-payments-list').innerHTML = payments.map((pm, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(pm.description||'Deposit')}</div>
           <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${pm.date}</div>
         </div>
-        <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">+$${Number(pm.amount).toFixed(2)}</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--accent2);white-space:nowrap">+$${Number(pm.amount).toFixed(2)}</span>
+        <select onchange="setPaymentType(${i}, this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:150px">
+          <option value="Paycheck" ${pm.type==='Paycheck'?'selected':''}>💼 Paycheck</option>
+          <option value="FSA" ${pm.type==='FSA'?'selected':''}>🏥 FSA Reimbursement</option>
+          <option value="Income" ${pm.type==='Income'?'selected':''}>💰 Other Income</option>
+          <option value="Transfer" ${pm.type==='Transfer'?'selected':''}>🔄 Transfer (neutral)</option>
+          <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment</option>
+        </select>
       </div>`).join('');
   } else {
     paymentsSection.style.display = 'none';
@@ -1455,6 +1508,11 @@ window.setTxCategory = function(index, category, selectEl) {
   }
   PENDING_REVIEW.transactions[index].category = category;
   PENDING_REVIEW.transactions[index].manuallySet = true;
+};
+
+window.setPaymentType = function(index, type) {
+  if (!PENDING_REVIEW || !PENDING_REVIEW.payments) return;
+  PENDING_REVIEW.payments[index].type = type;
 };
 
 window.toggleAutoSection = function() {
@@ -1579,15 +1637,64 @@ async function loadTransactionsForMonth(month) {
 }
 
 // ── EDIT TRANSACTIONS MODAL ──
+window.switchEditTab = function(tab) {
+  const isTx = tab === 'tx';
+  document.getElementById('edit-tx-list').style.display = isTx ? 'flex' : 'none';
+  document.getElementById('edit-pay-list').style.display = isTx ? 'none' : 'flex';
+  document.getElementById('edit-tab-tx').style.background = isTx ? 'var(--accent)' : 'transparent';
+  document.getElementById('edit-tab-tx').style.color = isTx ? '#fff' : 'var(--muted)';
+  document.getElementById('edit-tab-tx').style.borderColor = isTx ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('edit-tab-pay').style.background = isTx ? 'transparent' : 'var(--accent)';
+  document.getElementById('edit-tab-pay').style.color = isTx ? 'var(--muted)' : '#fff';
+  document.getElementById('edit-tab-pay').style.borderColor = isTx ? 'var(--border)' : 'var(--accent)';
+  if (!isTx) renderEditPaymentsList();
+};
+
+function renderEditPaymentsList() {
+  const payEl = document.getElementById('edit-pay-list');
+  if (!CURRENT_MONTH_PAYMENTS.length) {
+    payEl.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No deposits recorded for this month yet.</div>';
+    return;
+  }
+  payEl.innerHTML = CURRENT_MONTH_PAYMENTS.map((pm, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;gap:8px">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(pm.description||'Deposit')}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${pm.date} · ${pm.account||''}</div>
+      </div>
+      <span style="font-family:var(--mono);font-size:12px;color:var(--accent2);white-space:nowrap">+$${Number(pm.amount).toFixed(2)}</span>
+      <select onchange="editPaymentType(${i}, this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:160px">
+        <option value="Paycheck" ${(pm.type||'Transfer')==='Paycheck'?'selected':''}>💼 Paycheck</option>
+        <option value="FSA" ${pm.type==='FSA'?'selected':''}>🏥 FSA Reimbursement</option>
+        <option value="Income" ${pm.type==='Income'?'selected':''}>💰 Other Income</option>
+        <option value="Transfer" ${(!pm.type||pm.type==='Transfer')?'selected':''}>🔄 Transfer (neutral)</option>
+        <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment</option>
+      </select>
+    </div>`).join('');
+}
+
+window.editPaymentType = async function(index, type) {
+  CURRENT_MONTH_PAYMENTS[index].type = type;
+  try {
+    const ref = doc(db, 'payments', SELECTED_MONTH);
+    await setDoc(ref, { payments: CURRENT_MONTH_PAYMENTS, updatedAt: new Date().toISOString() });
+    renderCashFlow();
+    showToast('Updated ✓', 'ok');
+  } catch(e) {
+    showToast('Save failed: ' + e.message, 'err');
+  }
+};
+
 window.openEditModal = async function() {
-  if (!CURRENT_MONTH_TRANSACTIONS.length) {
-    showToast('No transactions for this month yet', 'err');
+  if (!CURRENT_MONTH_TRANSACTIONS.length && !CURRENT_MONTH_PAYMENTS.length) {
+    showToast('No data for this month yet', 'err');
     return;
   }
   const [y, m] = SELECTED_MONTH.split('-').map(Number);
   const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
-  document.getElementById('edit-modal-title').textContent = `✏️ Edit Transactions — ${monthLabel}`;
-  document.getElementById('edit-modal-sub').textContent = `${CURRENT_MONTH_TRANSACTIONS.length} transactions · click a category to change it`;
+  document.getElementById('edit-modal-title').textContent = `✏️ Edit — ${monthLabel}`;
+  document.getElementById('edit-modal-sub').textContent = `${CURRENT_MONTH_TRANSACTIONS.length} transactions · ${CURRENT_MONTH_PAYMENTS.length} deposits`;
+  switchEditTab('tx');
   renderEditList();
   document.getElementById('edit-modal').classList.add('open');
 };
