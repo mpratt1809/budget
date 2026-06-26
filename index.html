@@ -420,7 +420,9 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
             <div style="font-family:var(--mono);font-size:20px;color:var(--accent2)" id="cf-income">—</div>
             <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px" id="cf-income-sub"></div>
             <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
-              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:6px">OTHER INCOME</div>
+              <div style="font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--muted);margin-bottom:4px">TRANSFERS IN (from own savings)</div>
+              <div style="font-family:var(--mono);font-size:13px;color:var(--accent2)" id="cf-transfer-in">—</div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:8px;margin-bottom:4px">OTHER INCOME</div>
               <div id="cf-other-income-list" style="display:flex;flex-direction:column;gap:4px"></div>
               <button onclick="addOtherIncome()" style="font-family:var(--mono);font-size:9px;color:var(--muted);background:transparent;border:1px dashed var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;margin-top:6px;width:100%">+ Add income</button>
             </div>
@@ -437,23 +439,26 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
                 <span style="color:var(--muted)">Discretionary spending</span>
                 <span id="cf-variable">—</span>
               </div>
-              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;border-top:1px solid var(--border);padding-top:4px;margin-top:2px">
+              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;border-top:1px solid var(--border);padding-top:4px;margin-top:4px">
                 <span style="color:var(--muted)">Card payments made</span>
                 <span id="cf-payments" style="color:var(--accent2)">—</span>
               </div>
-              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-top:2px">
-                <span style="color:var(--muted)">Transfers (neutral)</span>
-                <span id="cf-transfers" style="color:var(--muted)">—</span>
+              <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+                <span style="color:var(--muted)">Transfers out (savings/Sky)</span>
+                <span id="cf-transfer-out" style="color:var(--warn)">—</span>
               </div>
             </div>
           </div>
         </div>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center">
           <div>
-            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Remaining</div>
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px">Net Cash Position</div>
             <div style="font-family:var(--mono);font-size:22px;font-weight:500" id="cf-remaining">—</div>
           </div>
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right" id="cf-remaining-sub"></div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right">
+            <div id="cf-remaining-sub"></div>
+            <div style="margin-top:4px;color:var(--muted);font-size:8px">Income + Transfers In<br>− Spending − Card Pmts − Transfers Out</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1035,53 +1040,37 @@ window.shiftSelectedMonth = function(dir) {
 };
 
 function renderCashFlow() {
-  // Income from real typed payment data
-  const paycheckTotal = CURRENT_MONTH_PAYMENTS
-    .filter(p => p.type === 'Paycheck')
-    .reduce((s,p) => s+(p.amount||0), 0);
-  const fsaTotal = CURRENT_MONTH_PAYMENTS
-    .filter(p => p.type === 'FSA')
-    .reduce((s,p) => s+(p.amount||0), 0);
-  const otherIncomeFromPayments = CURRENT_MONTH_PAYMENTS
-    .filter(p => p.type === 'Income')
-    .reduce((s,p) => s+(p.amount||0), 0);
-  const otherIncomeManual = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0), 0);
-  const transferTotal = CURRENT_MONTH_PAYMENTS
-    .filter(p => p.type === 'Transfer')
-    .reduce((s,p) => s+(p.amount||0), 0);
-  const cardPaymentTotal = CURRENT_MONTH_PAYMENTS
-    .filter(p => p.type === 'CreditCardPayment')
-    .reduce((s,p) => s+(p.amount||0), 0);
+  // 5-bucket model
+  const paycheckTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='Paycheck').reduce((s,p)=>s+(p.amount||0),0);
+  const fsaTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='FSA').reduce((s,p)=>s+(p.amount||0),0);
+  const checkTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='CheckDeposit').reduce((s,p)=>s+(p.amount||0),0);
+  const otherIncomeManual = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0),0);
+  const transferInTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='TransferIn').reduce((s,p)=>s+(p.amount||0),0);
+  const cardPaymentTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='CreditCardPayment').reduce((s,p)=>s+(p.amount||0),0);
+  const transferOutTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>t.category==='Transfer Out').reduce((s,t)=>s+(t.amount||0),0);
+  const totalIncome = paycheckTotal + fsaTotal + checkTotal + otherIncomeManual;
+  const fixedTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>t.category==='Fixed Bill'||t.category==='Subscription').reduce((s,t)=>s+(t.amount||0),0);
+  const variableTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>!['Fixed Bill','Subscription','Transfer Out','Credit Card Payment'].includes(t.category)).reduce((s,t)=>s+(t.amount||0),0);
+  const totalSpending = fixedTotal + variableTotal;
+  const remaining = totalIncome + transferInTotal - transferOutTotal - cardPaymentTotal - totalSpending;
 
-  const totalIncome = paycheckTotal + fsaTotal + otherIncomeFromPayments + otherIncomeManual;
-
-  const fixedTotal = CURRENT_MONTH_TRANSACTIONS
-    .filter(t => t.category === 'Fixed Bill' || t.category === 'Subscription')
-    .reduce((s,t) => s+(t.amount||0), 0);
-  const variableTotal = CURRENT_MONTH_TRANSACTIONS
-    .filter(t => t.category !== 'Fixed Bill' && t.category !== 'Subscription')
-    .reduce((s,t) => s+(t.amount||0), 0);
-  const totalOut = fixedTotal + variableTotal;
-  const remaining = totalIncome - totalOut;
-
-  // Month picker label
+  // Month label
   const [y, m] = SELECTED_MONTH.split('-').map(Number);
   const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
   const isCurrentMonth = SELECTED_MONTH === new Date().toISOString().slice(0,7);
 
   // Income side
-  const incomeBreakdown = [
+  const incomeParts = [
     paycheckTotal > 0 ? `${CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='Paycheck').length} paycheck${CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='Paycheck').length!==1?'s':''}` : '',
     fsaTotal > 0 ? `FSA $${Math.round(fsaTotal)}` : '',
-    otherIncomeFromPayments > 0 ? `other $${Math.round(otherIncomeFromPayments)}` : ''
-  ].filter(Boolean).join(' · ') || 'No income data yet — upload statements';
+    checkTotal > 0 ? `checks $${Math.round(checkTotal)}` : '',
+    otherIncomeManual > 0 ? `other $${Math.round(otherIncomeManual)}` : ''
+  ].filter(Boolean).join(' · ') || (CURRENT_MONTH_PAYMENTS.length ? 'Classify deposits in Edit → Deposits tab' : 'Upload statements to track income');
 
-  document.getElementById('cf-income').textContent = totalIncome > 0
-    ? '$'+Math.round(totalIncome).toLocaleString('en-US')
-    : '$0';
-  document.getElementById('cf-income-sub').textContent = incomeBreakdown;
+  document.getElementById('cf-income').textContent = totalIncome > 0 ? '$'+Math.round(totalIncome).toLocaleString('en-US') : '$0';
+  document.getElementById('cf-income-sub').textContent = incomeParts;
 
-  // Other income list (manual additions)
+  // Other income manual list
   const otherList = document.getElementById('cf-other-income-list');
   if (otherList) {
     otherList.innerHTML = OTHER_INCOME.map((item,i) => `
@@ -1095,19 +1084,19 @@ function renderCashFlow() {
   }
 
   // Out side
+  const totalOut = totalSpending + cardPaymentTotal + transferOutTotal;
   document.getElementById('cf-out').textContent = '$'+Math.round(totalOut).toLocaleString('en-US');
   document.getElementById('cf-fixed').textContent = '$'+Math.round(fixedTotal).toLocaleString('en-US');
-  document.getElementById('cf-variable').textContent = CURRENT_MONTH_TRANSACTIONS.length
-    ? '$'+Math.round(variableTotal).toLocaleString('en-US')
-    : 'No statements yet';
+  document.getElementById('cf-variable').textContent = CURRENT_MONTH_TRANSACTIONS.length ? '$'+Math.round(variableTotal).toLocaleString('en-US') : 'No statements yet';
 
-  // Card payments row
   const pmEl = document.getElementById('cf-payments');
   if (pmEl) pmEl.textContent = cardPaymentTotal > 0 ? '$'+Math.round(cardPaymentTotal).toLocaleString('en-US') : '—';
 
-  // Transfers row (neutral — shown for awareness, not counted against budget)
-  const trEl = document.getElementById('cf-transfers');
-  if (trEl) trEl.textContent = transferTotal > 0 ? '$'+Math.round(transferTotal).toLocaleString('en-US') : '—';
+  const trInEl = document.getElementById('cf-transfer-in');
+  if (trInEl) trInEl.textContent = transferInTotal > 0 ? '+$'+Math.round(transferInTotal).toLocaleString('en-US') : '—';
+
+  const trOutEl = document.getElementById('cf-transfer-out');
+  if (trOutEl) trOutEl.textContent = transferOutTotal > 0 ? '$'+Math.round(transferOutTotal).toLocaleString('en-US') : '—';
 
   // Remaining
   const remEl = document.getElementById('cf-remaining');
@@ -1196,6 +1185,7 @@ let SPENDING_CATEGORIES = [
   'Utilities & Bills',
   'Entertainment & Subscriptions',
   'Personal Care',
+  'Transfer Out',
   'Other'
 ];
 
@@ -1279,12 +1269,20 @@ Return ONLY valid JSON, no markdown, no explanation, in this exact format:
   ]
 }
 
-PAYMENT TYPES — classify every deposit/credit with one of these:
-- Paycheck (employer payroll deposits — Ferrovial, direct deposit from employer)
+PAYMENT TYPES — classify every deposit/credit coming INTO the account with one of these:
+- Paycheck (employer payroll — Ferrovial, direct deposit from employer)
 - FSA (FSA/HSA reimbursements — Employee Benefit EBC, insurance reimbursements)
-- Income (other real income — freelance, refunds from merchants, interest)
-- Transfer (moving your own money — savings withdrawals, Zelle from yourself, mobile check deposits of your own funds, Wealthfront/brokerage transfers, bank-to-bank transfers)
-- CreditCardPayment (outgoing credit card payments from checking — Chase EPAY, Citi payment, Discover payment, Synchrony — these are money LEAVING your checking account)
+- CheckDeposit (paper checks deposited — mobile check deposits, year-end bonuses paid by check, tax refunds by check, reimbursements)
+- TransferIn (money moved FROM your own other accounts INTO this account — savings withdrawal, brokerage transfer like Wealthfront, bank-to-bank transfer in)
+- CreditCardPayment (THIS IS AN OUTGOING PAYMENT — credit card payments leaving checking: Chase EPAY, Citi payment, Discover payment, Synchrony — put these in payments with negative context but positive amount)
+
+TRANSACTION RULES — what goes in transactions vs payments:
+- ALL withdrawals/debits/purchases = transactions (with category)
+- Zelle payments TO other people = transactions, category "Transfer Out"
+- Savings transfers OUT = transactions, category "Transfer Out"  
+- ALL deposits/credits coming in = payments (with type above)
+- NEVER put credit card payments (Chase EPAY, Citi, Discover, Synchrony) in transactions — they go in payments as type CreditCardPayment
+- NEVER put paychecks/FSA/deposits in transactions — they go in payments
 
 CRITICAL — Determine account type first:
 - If this is a CHECKING or DEBIT account (Bank of America checking, UFCU checking): 
@@ -1414,9 +1412,9 @@ function showReviewScreen() {
         <select onchange="setPaymentType(${i}, this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:150px">
           <option value="Paycheck" ${pm.type==='Paycheck'?'selected':''}>💼 Paycheck</option>
           <option value="FSA" ${pm.type==='FSA'?'selected':''}>🏥 FSA Reimbursement</option>
-          <option value="Income" ${pm.type==='Income'?'selected':''}>💰 Other Income</option>
-          <option value="Transfer" ${pm.type==='Transfer'?'selected':''}>🔄 Transfer (neutral)</option>
-          <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment</option>
+          <option value="CheckDeposit" ${pm.type==='CheckDeposit'?'selected':''}>🧾 Check / Other Income</option>
+          <option value="TransferIn" ${pm.type==='TransferIn'?'selected':''}>⬇️ Transfer In (own savings)</option>
+          <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment Out</option>
         </select>
       </div>`).join('');
   } else {
@@ -1664,11 +1662,11 @@ function renderEditPaymentsList() {
       </div>
       <span style="font-family:var(--mono);font-size:12px;color:var(--accent2);white-space:nowrap">+$${Number(pm.amount).toFixed(2)}</span>
       <select onchange="editPaymentType(${i}, this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:160px">
-        <option value="Paycheck" ${(pm.type||'Transfer')==='Paycheck'?'selected':''}>💼 Paycheck</option>
+        <option value="Paycheck" ${(pm.type||'')==='Paycheck'?'selected':''}>💼 Paycheck</option>
         <option value="FSA" ${pm.type==='FSA'?'selected':''}>🏥 FSA Reimbursement</option>
-        <option value="Income" ${pm.type==='Income'?'selected':''}>💰 Other Income</option>
-        <option value="Transfer" ${(!pm.type||pm.type==='Transfer')?'selected':''}>🔄 Transfer (neutral)</option>
-        <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment</option>
+        <option value="CheckDeposit" ${pm.type==='CheckDeposit'?'selected':''}>🧾 Check / Other Income</option>
+        <option value="TransferIn" ${pm.type==='TransferIn'?'selected':''}>⬇️ Transfer In (own savings)</option>
+        <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment Out</option>
       </select>
     </div>`).join('');
 }
