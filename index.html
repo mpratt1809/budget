@@ -1093,6 +1093,9 @@ function renderCashFlow() {
   const checkTotal = CURRENT_MONTH_PAYMENTS
     .filter(p => p.type === 'CheckDeposit')
     .reduce((s,p) => s+(p.amount||0), 0);
+  const zelleTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'ZelleDeposit')
+    .reduce((s,p) => s+(p.amount||0), 0);
   // Refunds and CardPaymentReceived are excluded from income entirely
   const otherIncomeManual = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0), 0);
   const transferInTotal = CURRENT_MONTH_PAYMENTS
@@ -1105,7 +1108,7 @@ function renderCashFlow() {
   const transferOutTotal = CURRENT_MONTH_TRANSACTIONS
     .filter(t => t.category === 'Transfer Out')
     .reduce((s,t) => s+(t.amount||0), 0);
-  const totalIncome = paycheckTotal + fsaTotal + checkTotal + otherIncomeManual;
+  const totalIncome = paycheckTotal + fsaTotal + checkTotal + zelleTotal + otherIncomeManual;
   const fixedTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>t.category==='Fixed Bill'||t.category==='Subscription').reduce((s,t)=>s+(t.amount||0),0);
   const variableTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>!['Fixed Bill','Subscription','Transfer Out','Savings Transfer','Credit Card Payment'].includes(t.category)).reduce((s,t)=>s+(t.amount||0),0);
   const totalSpending = fixedTotal + variableTotal;
@@ -1120,7 +1123,8 @@ function renderCashFlow() {
   const incomeParts = [
     paycheckTotal > 0 ? `${CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='Paycheck').length} paycheck${CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='Paycheck').length!==1?'s':''}` : '',
     fsaTotal > 0 ? `FSA $${Math.round(fsaTotal)}` : '',
-    checkTotal > 0 ? `checks $${Math.round(checkTotal)}` : '',
+    checkTotal > 0 ? `deposits $${Math.round(checkTotal)}` : '',
+    zelleTotal > 0 ? `Zelle received $${Math.round(zelleTotal)}` : '',
     otherIncomeManual > 0 ? `other $${Math.round(otherIncomeManual)}` : ''
   ].filter(Boolean).join(' · ') || (CURRENT_MONTH_PAYMENTS.length ? 'Classify deposits in Edit → Deposits tab' : 'Upload statements to track income');
 
@@ -1239,11 +1243,16 @@ let SPENDING_CATEGORIES = [
   'Pets',
   'Pharmacy & Health',
   'Therapy',
-  'Utilities & Bills',
+  'Utilities',
   'Entertainment & Subscriptions',
   'Personal Care',
+  'Home Services',
+  'Fees',
+  'Personal Transfer',
+  'Transfer to Sky',
   'Transfer Out',
   'Savings Transfer',
+  'Trips',
   'Other'
 ];
 
@@ -1257,7 +1266,7 @@ const CATEGORY_ICONS = {
   'Pets': '🐾',
   'Pharmacy & Health': '💊',
   'Therapy': '🧠',
-  'Utilities & Bills': '💡',
+  'Utilities': '💡',
   'Entertainment & Subscriptions': '🎬',
   'Personal Care': '💅',
   'Other': '📦'
@@ -1369,44 +1378,57 @@ GOES IN payments (money IN):
 ✓ FERROVIAL HOLDIN PAYROLL → payments, type "Paycheck"
 ✓ EMPLOYEE BENEFIT EBC → payments, type "FSA"
 ✓ SBTPG PRODUCTS (tax refund processor) → payments, type "CheckDeposit"
-✓ Online Banking transfer FROM SAV → payments, type "TransferIn"
-✓ Zelle payment FROM someone else → payments, type "CheckDeposit" (income from others)
-✓ Overdraft protection transfer → payments, type "TransferIn"
-✓ Transfer VENMO (incoming) → payments, type "CheckDeposit"
-✓ D.J.'S SNOWMOBILE (checkcard credit/refund) → payments, type "CheckDeposit"
 ✓ BKOFAMERICA MOBILE DEPOSIT → payments, type "CheckDeposit"
+✓ Online Banking transfer FROM SAV → payments, type "TransferIn"
+✓ Overdraft protection transfer → payments, type "TransferIn"
+✓ Zelle payment FROM someone (Sky, friends, anyone) → payments, type "ZelleDeposit"
+✓ Transfer VENMO (incoming from someone) → payments, type "ZelleDeposit"
+✓ Merchant refunds, cashback credits → payments, type "Refund"
+✓ DISCOVER E-PAYMENT → payments, type "CreditCardPayment" (outgoing CC payment)
+✓ CHASE CREDIT CRD EPAY → payments, type "CreditCardPayment"
+✓ Synchrony Bank CC PYMT → payments, type "CreditCardPayment"
+✓ Citi Card Online Payment → payments, type "CreditCardPayment"
 
 ═══ STEP 3: SPENDING CATEGORIES ═══
-Fixed Bill | Subscription | Dining Out & Delivery | Groceries | Gas & Transportation | Shopping & Amazon | Pets | Pharmacy & Health | Therapy | Entertainment & Subscriptions | Personal Care | Transfer Out | Other
+Fixed Bill | Subscription | Dining Out & Delivery | Groceries | Gas & Transportation | Shopping & Amazon | Pets | Pharmacy & Health | Therapy | Utilities | Entertainment & Subscriptions | Personal Care | Home Services | Fees | Personal Transfer | Transfer to Sky | Transfer Out | Savings Transfer | Trips | Other
 
 SPECIFIC MERCHANTS:
-- JESSIE WHITE / SimplTX = Therapy
+- JESSIE WHITE / SimplTX / TANNENBAUM PSYCHOTHERA = Therapy
 - NTTA AUTOCHARGE = Gas & Transportation  
 - TST* prefix = Dining Out & Delivery
+- SQ * prefix = Dining Out & Delivery (Square payment terminals at restaurants)
 - 7-ELEVEN = Gas & Transportation (unless clearly food only)
 - PEOPLES PHARMA = Pharmacy & Health
+- SP ARMRA = Pharmacy & Health (supplement)
 - ANTHROPIC = Subscription
 - SP+AFF / BOARDSMIT = Subscription
-- WHOOP = Subscription
-- STRONG PAWS DONATION = Other
-- SEAT ENGINE = Entertainment & Subscriptions
-- HOBBYLOBBY = Shopping & Amazon
-- BOULDIN ACRES = Dining Out & Delivery
-- SHORTWAVE EAST = Entertainment & Subscriptions
+- WHOOP (monthly $30-40) = Subscription; WHOOP (large one-time charge) = Shopping & Amazon
+- AUSTIN WOMENS BOXING = Subscription
+- SHORTWAVE EAST = Dining Out & Delivery
 - HOME CHEF = Groceries
 - BESPOKE POST = Shopping & Amazon
 - VIVINT = Fixed Bill
 - AT&T = Fixed Bill
-- AUSTIN WOMENS BOXING = Subscription
-- TANNENBAUM PSYCHOTHERAPY = Therapy
-
-CHASE CREDIT CARD SPECIFIC:
-- BALANCE TRANSFER TO * = Transfer Out (debt restructuring, not spending)
-- TRANSACTION FEE (on same date as balance transfer) = Fixed Bill (balance transfer fee)
-- PLAN FEE - * = Fixed Bill (Chase Pay Over Time interest/fee — treat like interest charge)
-- *RETURN/CREDIT* with negative amount = include in transactions with negative amount (it's a refund that offsets spending)
-- ANNUAL MEMBERSHIP FEE = Fixed Bill
-- FOREIGN TRANSACTION FEE = Fixed Bill
+- LOC CITIZENS = Fixed Bill (line of credit payment)
+- WWP*HOMETEAM PEST DEFENSE = Fixed Bill
+- SALT LIGHT AND ELECTRIC = Shopping & Amazon
+- RADIANT PLUMBING / plumbing services = Home Services
+- CHEWY.COM = Pets
+- SP VIVA RAW / VIVARAWPETS = Pets
+- SPOTIFY = Subscription
+- EXPEDIA / DELTA AIR / UNITED / airline/hotel = Trips
+- SEAT ENGINE / AUSTIN THEATRE = Entertainment & Subscriptions
+- Westbank Dry Cleaning = Personal Care
+- CRUNCH FIT = Subscription
+- BLUEBONNET ELECT / Bluebonnet Electric = Utilities
+- CITY OF AUSTIN = Utilities
+- CPENERGY = Utilities
+- Zelle TO Sky / Zelle TO Skylar Beal = Transfer to Sky
+- Zelle TO Sacha / Zelle TO Lauren / Zelle TO Brie / Zelle TO [any person] = Personal Transfer
+- Venmo TO [person] = Personal Transfer
+- Online Banking transfer TO SAV = Savings Transfer
+- ANNUAL MEMBERSHIP FEE / LATE FEE / PLAN FEE / INTEREST CHARGE / PURCHASE INTEREST = Fees
+- KEEP THE CHANGE = SKIP entirely
 
 Rules: amount always positive EXCEPT for refunds/credits which should have negative amounts. Use transaction date not posting date.`,
         messages: [{
@@ -1510,7 +1532,8 @@ function showReviewScreen() {
         <select onchange="setPaymentType(${i}, this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:150px">
           <option value="Paycheck" ${pm.type==='Paycheck'?'selected':''}>💼 Paycheck</option>
           <option value="FSA" ${pm.type==='FSA'?'selected':''}>🏥 FSA Reimbursement</option>
-          <option value="CheckDeposit" ${pm.type==='CheckDeposit'?'selected':''}>🧾 Check / Other Income</option>
+          <option value="CheckDeposit" ${pm.type==='CheckDeposit'?'selected':''}>🧾 Check / Mobile Deposit</option>
+          <option value="ZelleDeposit" ${pm.type==='ZelleDeposit'?'selected':''}>💸 Zelle / Venmo Received</option>
           <option value="TransferIn" ${pm.type==='TransferIn'?'selected':''}>⬇️ Transfer In (own savings)</option>
           <option value="Refund" ${pm.type==='Refund'?'selected':''}>↩️ Refund / Credit (not income)</option>
           <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment Out</option>
@@ -1814,7 +1837,8 @@ function renderEditPaymentsList() {
       <select onchange="editPaymentType(${i}, this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:10px;padding:4px 6px;cursor:pointer;max-width:160px">
         <option value="Paycheck" ${(pm.type||'')==='Paycheck'?'selected':''}>💼 Paycheck</option>
         <option value="FSA" ${pm.type==='FSA'?'selected':''}>🏥 FSA Reimbursement</option>
-        <option value="CheckDeposit" ${pm.type==='CheckDeposit'?'selected':''}>🧾 Check / Other Income</option>
+        <option value="CheckDeposit" ${pm.type==='CheckDeposit'?'selected':''}>🧾 Check / Mobile Deposit</option>
+        <option value="ZelleDeposit" ${pm.type==='ZelleDeposit'?'selected':''}>💸 Zelle / Venmo Received</option>
         <option value="TransferIn" ${pm.type==='TransferIn'?'selected':''}>⬇️ Transfer In (own savings)</option>
         <option value="Refund" ${pm.type==='Refund'?'selected':''}>↩️ Refund / Credit (not income)</option>
         <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment Out</option>
