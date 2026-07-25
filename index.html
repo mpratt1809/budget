@@ -963,10 +963,9 @@ function renderSpending() {
   // Get unique accounts
   const accounts = [...new Set(allTxs.map(t => t.account))];
 
-  // Categories that should never show in discretionary spending breakdown
+  // Categories that are NOT real spending and should never show in the analyzer
   const NON_DISCRETIONARY = new Set([
-    'Credit Card Payment', 'Transfer Out', 'Savings Deposit',
-    'Investment', 'Fixed Bill', 'Subscription'
+    'Credit Card Payment', 'Transfer Out', 'Savings Deposit', 'Investment'
   ]);
 
   // Apply account filter
@@ -994,7 +993,7 @@ function renderSpending() {
   const [y, m] = SELECTED_MONTH.split('-').map(Number);
   const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
-  spendBadge.textContent = '$'+Math.round(total).toLocaleString('en-US')+' discretionary';
+  spendBadge.textContent = '$'+Math.round(total).toLocaleString('en-US')+' analyzed';
 
   const accountChips = accounts.map(acct => {
     const label = allTxs.find(t => t.account === acct)?.accountLabel || acct;
