@@ -1593,7 +1593,12 @@ window.saveReviewedTransactions = async function() {
         });
       }
       try {
-        await Promise.all(Object.entries(payByMonth).map(([month, pms]) => {
+        const monthEntries = Object.entries(payByMonth);
+        console.log('Payment months to write:', monthEntries.map(([m, pms]) => `${m}: ${pms.length} entries`));
+        monthEntries.forEach(([m, pms]) => {
+          pms.forEach((pm, i) => console.log(`  ${m}[${i}]: date=${pm.date} amount=${pm.amount} desc=${(pm.description||'').slice(0,30)}`));
+        });
+        await Promise.all(monthEntries.map(([month, pms]) => {
           const pmMap = {};
           for (const pm of pms) pmMap[pm.id] = pm;
           return setDoc(doc(db, 'payments', month), {
