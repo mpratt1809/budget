@@ -1083,6 +1083,7 @@ function renderCashFlow() {
   const checkTotal = CURRENT_MONTH_PAYMENTS
     .filter(p => p.type === 'CheckDeposit')
     .reduce((s,p) => s+(p.amount||0), 0);
+  // Refunds and CardPaymentReceived are excluded from income entirely
   const otherIncomeManual = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0), 0);
   const transferInTotal = CURRENT_MONTH_PAYMENTS
     .filter(p => p.type === 'TransferIn')
@@ -1325,7 +1326,7 @@ CHECKING/DEBIT ACCOUNT (Bank of America, UFCU):
 CREDIT CARD ACCOUNT (Chase, Citi, Discover, Synchrony):
 • transactions array = ALL charges/purchases made on the card (money spent)
 • cardPayments array = payments made TO the card (Payment Thank You, mobile payments, autopay) — these are NOT income, just debt reduction
-• payments array = ONLY true credits: merchant refunds, cashback credits, rewards statement credits. These reduce your balance.
+• payments array = ONLY true credits: merchant refunds, cashback credits, rewards statement credits. Use type "Refund". These reduce your balance but are NOT income.
 
 CRITICAL FOR CREDIT CARDS: "Payment Thank You", "Payment Thank You-Mobile", "AutoPay", "Online Payment" entries go in cardPayments, NOT payments. They are NEVER income.
 
@@ -1500,6 +1501,7 @@ function showReviewScreen() {
           <option value="FSA" ${pm.type==='FSA'?'selected':''}>🏥 FSA Reimbursement</option>
           <option value="CheckDeposit" ${pm.type==='CheckDeposit'?'selected':''}>🧾 Check / Other Income</option>
           <option value="TransferIn" ${pm.type==='TransferIn'?'selected':''}>⬇️ Transfer In (own savings)</option>
+          <option value="Refund" ${pm.type==='Refund'?'selected':''}>↩️ Refund / Credit (not income)</option>
           <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment Out</option>
         </select>
       </div>`).join('');
@@ -1803,6 +1805,7 @@ function renderEditPaymentsList() {
         <option value="FSA" ${pm.type==='FSA'?'selected':''}>🏥 FSA Reimbursement</option>
         <option value="CheckDeposit" ${pm.type==='CheckDeposit'?'selected':''}>🧾 Check / Other Income</option>
         <option value="TransferIn" ${pm.type==='TransferIn'?'selected':''}>⬇️ Transfer In (own savings)</option>
+        <option value="Refund" ${pm.type==='Refund'?'selected':''}>↩️ Refund / Credit (not income)</option>
         <option value="CreditCardPayment" ${pm.type==='CreditCardPayment'?'selected':''}>💳 Credit Card Payment Out</option>
       </select>
     </div>`).join('');
