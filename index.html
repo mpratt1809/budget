@@ -963,14 +963,24 @@ function renderSpending() {
   // Get unique accounts
   const accounts = [...new Set(allTxs.map(t => t.account))];
 
+  // Categories that should never show in discretionary spending breakdown
+  const NON_DISCRETIONARY = new Set([
+    'Credit Card Payment', 'Transfer Out', 'Savings Deposit',
+    'Investment', 'Fixed Bill', 'Subscription'
+  ]);
+
   // Apply account filter
   const txs = SPENDING_FILTER_ACCOUNT
     ? allTxs.filter(t => t.account === SPENDING_FILTER_ACCOUNT)
     : allTxs;
 
-  // Group by category
+  // Split into discretionary and non-discretionary for display
+  const discretionaryTxs = txs.filter(t => !NON_DISCRETIONARY.has(t.category || 'Other'));
+  const nonDiscretionaryTxs = txs.filter(t => NON_DISCRETIONARY.has(t.category || 'Other'));
+
+  // Group discretionary by category
   const byCategory = {};
-  for (const tx of txs) {
+  for (const tx of discretionaryTxs) {
     const cat = tx.category || 'Other';
     if (!byCategory[cat]) byCategory[cat] = { name:cat, icon: CATEGORY_ICONS[cat]||'📦', actual:0, txs:[] };
     byCategory[cat].actual += tx.amount;
@@ -979,13 +989,13 @@ function renderSpending() {
 
   const cats = Object.values(byCategory).sort((a,b) => b.actual - a.actual);
   const total = cats.reduce((s,c)=>s+c.actual,0);
+  const nonDiscTotal = nonDiscretionaryTxs.reduce((s,t)=>s+(t.amount||0),0);
 
   const [y, m] = SELECTED_MONTH.split('-').map(Number);
   const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
-  spendBadge.textContent = '$'+Math.round(total).toLocaleString('en-US')+' analyzed';
+  spendBadge.textContent = '$'+Math.round(total).toLocaleString('en-US')+' discretionary';
 
-  // Account filter chips — active chip highlighted, click to toggle
   const accountChips = accounts.map(acct => {
     const label = allTxs.find(t => t.account === acct)?.accountLabel || acct;
     const isActive = SPENDING_FILTER_ACCOUNT === acct;
@@ -993,15 +1003,16 @@ function renderSpending() {
   }).join('');
 
   const filterLabel = SPENDING_FILTER_ACCOUNT
-    ? `${txs.length} transactions · ${monthLabel}`
-    : `${txs.length} of ${allTxs.length} transactions · ${monthLabel}`;
+    ? `${discretionaryTxs.length} transactions · ${monthLabel}`
+    : `${discretionaryTxs.length} of ${allTxs.length} transactions · ${monthLabel}`;
 
   spendBody.innerHTML = `
     <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       ${accountChips}
       ${accounts.length > 1 && SPENDING_FILTER_ACCOUNT ? `<span onclick="toggleSpendingFilter(null)" style="cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--muted);text-decoration:underline">show all</span>` : ''}
       <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">${filterLabel}</span>
-    </div>` +
+    </div>
+    ${nonDiscTotal > 0 ? `<div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:10px;padding:6px 10px;background:var(--card2);border-radius:6px">+ $${Math.round(nonDiscTotal).toLocaleString('en-US')} in fixed bills, card payments & transfers (excluded from chart)</div>` : ''}` +
     cats.map(c => {
       const pct = Math.min(100, (c.actual / total) * 100);
       return `<div class="spend-bar-row" style="cursor:pointer" onclick="toggleCategoryDetail('${c.name}')">
