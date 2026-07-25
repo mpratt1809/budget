@@ -965,7 +965,7 @@ function renderSpending() {
 
   // Categories that are NOT real spending and should never show in the analyzer
   const NON_DISCRETIONARY = new Set([
-    'Credit Card Payment', 'Transfer Out', 'Savings Deposit', 'Investment'
+    'Credit Card Payment', 'Transfer Out', 'Savings Transfer', 'Savings Deposit', 'Investment'
   ]);
 
   // Apply account filter
@@ -1107,7 +1107,7 @@ function renderCashFlow() {
     .reduce((s,t) => s+(t.amount||0), 0);
   const totalIncome = paycheckTotal + fsaTotal + checkTotal + otherIncomeManual;
   const fixedTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>t.category==='Fixed Bill'||t.category==='Subscription').reduce((s,t)=>s+(t.amount||0),0);
-  const variableTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>!['Fixed Bill','Subscription','Transfer Out','Credit Card Payment'].includes(t.category)).reduce((s,t)=>s+(t.amount||0),0);
+  const variableTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>!['Fixed Bill','Subscription','Transfer Out','Savings Transfer','Credit Card Payment'].includes(t.category)).reduce((s,t)=>s+(t.amount||0),0);
   const totalSpending = fixedTotal + variableTotal;
   const remaining = totalIncome + transferInTotal - transferOutTotal - cardPaymentTotal - totalSpending;
 
@@ -1243,6 +1243,7 @@ let SPENDING_CATEGORIES = [
   'Entertainment & Subscriptions',
   'Personal Care',
   'Transfer Out',
+  'Savings Transfer',
   'Other'
 ];
 
@@ -1355,9 +1356,9 @@ GOES IN transactions (money OUT):
 ✓ T-MOBILE → transactions, category "Fixed Bill"
 ✓ CPENERGY / Bluebonnet → transactions, category "Fixed Bill"
 ✓ City of Austin payments → transactions, category "Fixed Bill"
-✓ Online Banking transfer TO SAV → transactions, category "Transfer Out"
-✓ Zelle payment TO someone → transactions, category "Transfer Out"
-✓ Venmo payment → transactions, category "Transfer Out"
+✓ Online Banking transfer TO SAV → transactions, category "Savings Transfer" (moving to own savings — not spending)
+✓ Zelle payment TO someone (Sky, Lauren, Sacha, Brie, etc.) → transactions, category "Transfer to Sky" (real money leaving household)
+✓ Venmo payment → transactions, category "Transfer to Sky" (real money leaving household)
 ✓ INVESCO investment → transactions, category "Transfer Out"
 ✓ KEEP THE CHANGE → SKIP entirely (internal bank feature, exclude from both arrays)
 ✓ Service fees → transactions, category "Fixed Bill"
