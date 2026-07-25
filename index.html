@@ -625,7 +625,7 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
 const ALLOWED_EMAIL = "mpratt1809@gmail.com";
@@ -933,12 +933,14 @@ function renderPaycheckCalendar() {
     </div>`;
 }
 
+let SPENDING_FILTER_ACCOUNT = null; // null = show all, string = filter to this account
+
 function renderSpending() {
-  const txs = CURRENT_MONTH_TRANSACTIONS;
+  const allTxs = CURRENT_MONTH_TRANSACTIONS;
   const spendBadge = document.getElementById('spend-badge');
   const spendBody = document.getElementById('spend-body');
 
-  if (!txs.length) {
+  if (!allTxs.length) {
     spendBadge.textContent = 'Upload to analyze';
     spendBody.innerHTML = `
       <div style="text-align:center;padding:24px;color:var(--muted)">
@@ -949,6 +951,14 @@ function renderSpending() {
       </div>`;
     return;
   }
+
+  // Get unique accounts
+  const accounts = [...new Set(allTxs.map(t => t.account))];
+
+  // Apply account filter
+  const txs = SPENDING_FILTER_ACCOUNT
+    ? allTxs.filter(t => t.account === SPENDING_FILTER_ACCOUNT)
+    : allTxs;
 
   // Group by category
   const byCategory = {};
@@ -962,16 +972,27 @@ function renderSpending() {
   const cats = Object.values(byCategory).sort((a,b) => b.actual - a.actual);
   const total = cats.reduce((s,c)=>s+c.actual,0);
 
-  // Which accounts are represented this month
-  const accounts = [...new Set(txs.map(t=>t.accountLabel||t.account))];
   const [y, m] = SELECTED_MONTH.split('-').map(Number);
   const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   spendBadge.textContent = '$'+Math.round(total).toLocaleString('en-US')+' analyzed';
+
+  // Account filter chips — active chip highlighted, click to toggle
+  const accountChips = accounts.map(acct => {
+    const label = allTxs.find(t => t.account === acct)?.accountLabel || acct;
+    const isActive = SPENDING_FILTER_ACCOUNT === acct;
+    return `<span onclick="toggleSpendingFilter('${acct}')" style="cursor:pointer;padding:3px 10px;border-radius:12px;font-family:var(--mono);font-size:10px;border:1px solid ${isActive?'var(--accent)':'var(--border)'};background:${isActive?'var(--accent)':'var(--card2)'};color:${isActive?'#fff':'var(--muted)'};user-select:none">${label}</span>`;
+  }).join('');
+
+  const filterLabel = SPENDING_FILTER_ACCOUNT
+    ? `${txs.length} transactions · ${monthLabel}`
+    : `${txs.length} of ${allTxs.length} transactions · ${monthLabel}`;
+
   spendBody.innerHTML = `
-    <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap">
-      ${accounts.map(a=>`<span class="card-badge">${a}</span>`).join('')}
-      <span style="font-family:var(--mono);font-size:9px;color:var(--muted);align-self:center">· ${monthLabel} · ${txs.length} transactions</span>
+    <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      ${accountChips}
+      ${accounts.length > 1 && SPENDING_FILTER_ACCOUNT ? `<span onclick="toggleSpendingFilter(null)" style="cursor:pointer;font-family:var(--mono);font-size:9px;color:var(--muted);text-decoration:underline">show all</span>` : ''}
+      <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">${filterLabel}</span>
     </div>` +
     cats.map(c => {
       const pct = Math.min(100, (c.actual / total) * 100);
@@ -989,9 +1010,13 @@ function renderSpending() {
       </div>`;
     }).join('');
 
-  // Refresh cash flow too since it reads from same data
   renderCashFlow();
 }
+
+window.toggleSpendingFilter = function(account) {
+  SPENDING_FILTER_ACCOUNT = (SPENDING_FILTER_ACCOUNT === account) ? null : account;
+  renderSpending();
+};
 
 window.toggleCategoryDetail = function(catName) {
   const id = 'cat-detail-'+catName.replace(/\W+/g,'_');
@@ -1598,13 +1623,20 @@ window.saveReviewedTransactions = async function() {
         monthEntries.forEach(([m, pms]) => {
           pms.forEach((pm, i) => console.log(`  ${m}[${i}]: date=${pm.date} amount=${pm.amount} desc=${(pm.description||'').slice(0,30)}`));
         });
-        await Promise.all(monthEntries.map(([month, pms]) => {
+        await Promise.all(monthEntries.map(async ([month, pms]) => {
           const pmMap = {};
           for (const pm of pms) pmMap[pm.id] = pm;
-          return setDoc(doc(db, 'payments', month), {
+          const fieldUpdate = {
             [`by_account_${p.account}`]: Object.values(pmMap),
             updatedAt: new Date().toISOString()
-          }, { merge: true });
+          };
+          const ref = doc(db, 'payments', month);
+          try {
+            await updateDoc(ref, fieldUpdate);
+          } catch(e) {
+            // Document doesn't exist yet — create it
+            await setDoc(ref, fieldUpdate);
+          }
         }));
       } catch(payErr) {
         console.error('Payments write failed:', payErr);
