@@ -312,20 +312,22 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
     <div class="agent-panel">
       <div class="agent-header">
         <div class="agent-icon">✦</div>
-        <div><div class="agent-title">Financial Agent</div><div class="agent-sub">Ask anything · Upload PDFs · Get analysis</div></div>
+        <div style="flex:1"><div class="agent-title">Financial Agent</div><div class="agent-sub">6 months of real spending data · Ask anything</div></div>
+        <button onclick="clearAgentChat()" style="font-family:var(--mono);font-size:9px;color:var(--muted);background:transparent;border:none;cursor:pointer;padding:4px 8px">Clear</button>
       </div>
       <div class="agent-input-row">
         <input class="agent-input" id="agent-q" placeholder="Ask me anything about your finances…" onkeydown="if(event.key==='Enter')askAgent()">
         <button class="btn btn-primary" onclick="askAgent()">Ask ✦</button>
         <button class="btn btn-ghost" onclick="openUpload()">📄 Upload PDF</button>
       </div>
-      <div class="agent-response" id="agent-resp"></div>
-      <div class="agent-actions">
-        <div class="agent-chip" onclick="quickAsk('How much debt do I have left and when will I be debt free?')">Debt free date?</div>
-        <div class="agent-chip" onclick="quickAsk('What should I focus on with my next paycheck?')">Next paycheck plan</div>
-        <div class="agent-chip" onclick="quickAsk('Analyze my spending and tell me where I can cut back')">Spending analysis</div>
-        <div class="agent-chip" onclick="quickAsk('What is my net worth right now?')">Net worth</div>
-        <div class="agent-chip" onclick="quickAsk('Give me a monthly budget based on my income and bills')">Build my budget</div>
+      <div class="agent-response" id="agent-resp" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+      <div class="agent-actions" style="margin-top:10px">
+        <div class="agent-chip" onclick="quickAsk('Where am I clearly overspending based on my last 6 months?')">Where am I overspending?</div>
+        <div class="agent-chip" onclick="quickAsk('Give me a realistic monthly budget for each spending category based on my actual habits and income')">Build my budget</div>
+        <div class="agent-chip" onclick="quickAsk('How much faster would I pay off my debt if I cut discretionary spending by $500/month?')">Debt payoff impact</div>
+        <div class="agent-chip" onclick="quickAsk('Which spending categories should I cut first to make the biggest impact on debt payoff?')">What to cut first?</div>
+        <div class="agent-chip" onclick="quickAsk('What is my net worth right now and how is it trending?')">Net worth</div>
+        <div class="agent-chip" onclick="quickAsk('When will I be debt free if I keep my current spending patterns?')">Debt free date?</div>
       </div>
     </div>
 
@@ -1248,12 +1250,16 @@ function normalizeMerchant(name) {
 
 // ── UPLOAD: Step 1 — Extract transactions from PDF ──
 window.openUpload  = function() {
-  document.getElementById('upload-modal').classList.add('open');
+  // Reset all state from any previous upload session
+  PENDING_REVIEW = null;
   document.getElementById('upload-step-1').style.display = 'block';
   document.getElementById('upload-step-2').style.display = 'none';
   document.getElementById('upload-log').innerHTML = '';
   document.getElementById('upload-log').className = 'upload-log';
   document.getElementById('pdf-input').value = '';
+  const btn = document.getElementById('btn-save-review');
+  if (btn) { btn.disabled = false; btn.textContent = 'Save All Transactions ✓'; }
+  document.getElementById('upload-modal').classList.add('open');
 };
 window.closeUpload = function() { document.getElementById('upload-modal').classList.remove('open'); };
 window.handleDragOver = function(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag'); };
@@ -1644,13 +1650,17 @@ window.saveReviewedTransactions = async function() {
       }
     }
 
-    // 5. Refresh the cash flow display
-    await loadTransactionsForMonth(SELECTED_MONTH);
-    renderCashFlow();
-
+    // 5. Show success and close
     showToast(`Saved ${p.transactions.length} transactions ✓`, 'ok');
     PENDING_REVIEW = null;
     closeUpload();
+
+    // Refresh display after a short delay to let Firestore settle
+    setTimeout(async () => {
+      await loadTransactionsForMonth(SELECTED_MONTH);
+      renderCashFlow();
+      renderSpending();
+    }, 800);
 
   } catch(e) {
     console.error('saveReviewedTransactions error:', e);
@@ -1847,63 +1857,194 @@ function fileToBase64(file) {
 }
 
 
+// ── FINANCIAL AGENT ──────────────────────────────────────────
+let AGENT_HISTORY = []; // conversation history for multi-turn
+let ALL_MONTHS_DATA = null; // cached multi-month transaction summary
+
+async function loadAllMonthsData() {
+  // Load transactions for the last 6 months
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(d.toISOString().slice(0, 7));
+  }
+
+  const results = {};
+  await Promise.all(months.map(async month => {
+    try {
+      const snap = await getDoc(doc(db, 'transactions', month));
+      if (snap.exists()) {
+        const data = snap.data();
+        const allTxs = [];
+        if (data.transactions) allTxs.push(...data.transactions);
+        for (const [key, val] of Object.entries(data)) {
+          if (key.startsWith('by_account_') && Array.isArray(val)) allTxs.push(...val);
+        }
+        if (allTxs.length) results[month] = allTxs;
+      }
+    } catch(e) {}
+  }));
+  return results;
+}
+
+function buildFinancialContext(allMonthsData) {
+  const totalDebt = DEBTS.filter(d=>d.status!=='paid').reduce((s,d)=>s+d.balance,0);
+  const totalInvest = INVESTMENTS.reduce((s,i)=>s+(i.value||0),0);
+
+  // Build spending summary across all months
+  const categoryTotals = {}; // category -> {total, months: {month -> amount}}
+  const monthlyTotals = {}; // month -> total spending
+
+  for (const [month, txs] of Object.entries(allMonthsData)) {
+    const skipCats = ['Fixed Bill','Subscription','Transfer Out','Credit Card Payment'];
+    const spendTxs = txs.filter(t => !skipCats.includes(t.category));
+    monthlyTotals[month] = spendTxs.reduce((s,t)=>s+(t.amount||0),0);
+
+    for (const tx of txs) {
+      const cat = tx.category || 'Other';
+      if (!categoryTotals[cat]) categoryTotals[cat] = { total: 0, count: 0, months: {} };
+      categoryTotals[cat].total += tx.amount;
+      categoryTotals[cat].count++;
+      categoryTotals[cat].months[month] = (categoryTotals[cat].months[month]||0) + tx.amount;
+    }
+  }
+
+  const monthCount = Object.keys(allMonthsData).length;
+  const avgMonthlySpend = monthCount > 0
+    ? Object.values(monthlyTotals).reduce((s,v)=>s+v,0) / monthCount
+    : 0;
+
+  // Format category averages
+  const catSummary = Object.entries(categoryTotals)
+    .sort((a,b) => b[1].total - a[1].total)
+    .map(([cat, d]) => `${cat}: $${Math.round(d.total/monthCount)}/mo avg (${d.count} transactions over ${monthCount} months)`)
+    .join('\n');
+
+  // Monthly trend
+  const monthlyTrend = Object.entries(monthlyTotals)
+    .sort()
+    .map(([m, v]) => `${m}: $${Math.round(v)}`)
+    .join(', ');
+
+  return `MEAGAN'S COMPLETE FINANCIAL PICTURE (as of ${new Date().toLocaleDateString('en-US',{month:'long',year:'numeric'})}):
+
+INCOME:
+- Paycheck: $4,358 bi-weekly (2 paychecks most months = ~$8,716/mo, 3 paychecks some months = ~$13,074)
+- FSA reimbursements: variable
+
+DEBTS (attack order — highest rate first):
+${DEBTS.filter(d=>d.status!=='paid').map(d=>`- ${d.name}: $${d.balance.toLocaleString()} @ ${d.rate}% APR, min $${d.min}/mo | ${d.note||''}`).join('\n')}
+Total active debt: $${Math.round(totalDebt).toLocaleString()}
+
+INVESTMENTS: $${Math.round(totalInvest).toLocaleString()} across 4 Fidelity accounts
+401k: contributing to employer match. Roth IRA: contributions ongoing.
+
+GOALS: Pay off all consumer debt ASAP (except mortgage/Subaru). Primary target: SoFi ($25K+). 
+Affirm loans at 0% until Jan 2027 — don't prioritize until closer to deadline.
+
+SPENDING DATA (${monthCount} months of real transaction history):
+Monthly discretionary spending trend: ${monthlyTrend}
+Average monthly discretionary spend: $${Math.round(avgMonthlySpend)}
+
+SPENDING BY CATEGORY (monthly averages):
+${catSummary}
+
+FIXED OBLIGATIONS (excluded from discretionary above):
+- Mortgage (Rocket): ~$2,770/mo
+- SoFi loan: $1,807.80/mo (autopay 5th)
+- Subaru: $630.05/mo
+- HOA (Easton Park): $80/mo
+- T-Mobile: $125/mo
+- City of Austin utilities: ~$150/mo
+- Electric (Bluebonnet): ~$140/mo
+- Crunch Fitness: $28.13/mo`;
+}
+
 window.askAgent = async function() {
   const q = document.getElementById('agent-q').value.trim();
   if (!q) return;
-  await runAgent(q);
   document.getElementById('agent-q').value = '';
+  await runAgent(q);
 };
-window.quickAsk = function(q) { document.getElementById('agent-q').value=q; runAgent(q); };
+
+window.quickAsk = function(q) {
+  document.getElementById('agent-q').value = q;
+  runAgent(q);
+};
+
+window.clearAgentChat = function() {
+  AGENT_HISTORY = [];
+  ALL_MONTHS_DATA = null;
+  const resp = document.getElementById('agent-resp');
+  resp.className = 'agent-response';
+  resp.innerHTML = '';
+};
 
 async function runAgent(question) {
   const resp = document.getElementById('agent-resp');
-  resp.className = 'agent-response visible loading';
-  resp.textContent = '✦ Thinking…';
-  const totalDebt    = DEBTS.filter(d=>d.status!=='paid').reduce((s,d)=>s+d.balance,0);
-  const totalInvest  = INVESTMENTS.reduce((s,i)=>s+(i.value||0),0);
-  const totalBills   = FIXED_BILLS.reduce((s,b)=>s+b.amt,0);
-  const context = `MEAGAN'S FINANCIAL DATA:
-Paycheck: $4,358 bi-weekly ($8,716/mo before bills)
-Total Active Debt: $${totalDebt.toLocaleString()}
-Total Investments: $${totalInvest.toLocaleString()} (4 Fidelity accounts)
-Fixed Monthly Bills: $${totalBills.toLocaleString()}
 
-DEBTS:
-${DEBTS.filter(d=>d.status!=='paid').map(d=>`- ${d.name}: $${d.balance.toLocaleString()} @ ${d.rate}% APR, $${d.monthly}/mo | ${d.note}`).join('\n')}
+  // Add user message to display
+  const userDiv = document.createElement('div');
+  userDiv.style.cssText = 'margin-bottom:8px;padding:8px 12px;background:var(--accent);color:#fff;border-radius:10px 10px 4px 10px;font-size:13px;max-width:85%;margin-left:auto';
+  userDiv.textContent = question;
+  resp.className = 'agent-response visible';
+  resp.appendChild(userDiv);
 
-FIXED BILLS: $${totalBills}/mo including mortgage $2,770, SoFi $1,807.80, Subaru $630.05
+  // Loading indicator
+  const loadingDiv = document.createElement('div');
+  loadingDiv.style.cssText = 'margin-bottom:8px;padding:8px 12px;background:var(--card2);border:1px solid var(--border);border-radius:4px 10px 10px 10px;font-size:13px;color:var(--muted)';
+  loadingDiv.innerHTML = '<div class="spinner" style="display:inline-block;margin-right:8px"></div>Analyzing your finances…';
+  resp.appendChild(loadingDiv);
+  resp.scrollTop = resp.scrollHeight;
 
-GOALS: Pay off all consumer debt by end of 2026 (except Subaru). Debt-free date excluding mortgage/Subaru projected ~Aug 2027. 
-Currently attacking SoFi ($29K). Affirm loans running at 0% until Jan 2027.
-401k contributing up to employer match. Roth IRA contributions ongoing.
-${(() => {
-  const txs = CURRENT_MONTH_TRANSACTIONS;
-  if (!txs.length) return '';
-  const byCategory = {};
-  txs.forEach(t => { byCategory[t.category||'Other'] = (byCategory[t.category||'Other']||0) + t.amount; });
-  const [y, m] = SELECTED_MONTH.split('-').map(Number);
-  const monthLabel = new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
-  return `SPENDING (${monthLabel}, ${txs.length} transactions): ` + Object.entries(byCategory).map(([n,v])=>n+': $'+Math.round(v)).join(', ');
-})()}`;
   try {
+    // Load multi-month data if not cached
+    if (!ALL_MONTHS_DATA) {
+      ALL_MONTHS_DATA = await loadAllMonthsData();
+    }
+
+    const context = buildFinancialContext(ALL_MONTHS_DATA);
+    AGENT_HISTORY.push({ role: 'user', content: question });
+
+    const systemPrompt = `You are Meagan's personal financial advisor with full access to her real financial data. Your job is to help her pay down debt aggressively while living within her means.
+
+RESPONSE STYLE:
+- Be direct and specific — always reference her actual numbers, not generic advice
+- Use short emoji headers to organize multi-part answers (e.g. "🔴 Overspending", "✅ On Track", "💡 Recommendation")
+- Give concrete dollar amounts and timelines, not vague suggestions
+- For budget recommendations, give specific monthly targets per category based on her actual spending history
+- For debt questions, calculate actual payoff dates and interest savings
+- Keep responses focused — answer the question asked, don't ramble
+- When you see categories like "Transfer Out" or "Credit Card Payment" in spending data, exclude them from discretionary spending analysis since they're not real expenses
+
+CONTEXT: ${context}`;
+
     const res = await fetch(WORKER_URL, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-6",
-        max_tokens:1000,
-        system:"You are Meagan's personal financial advisor with full knowledge of her finances. Be direct, specific, and actionable. Use her real numbers. Keep responses concise but thorough — 3-5 sentences max unless a detailed breakdown is needed. Never be generic.",
-        messages:[{role:"user",content:context+"\n\nQUESTION: "+question}]
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: AGENT_HISTORY
       })
     });
+
     const data = await res.json();
-    const text = data.content?.map(c=>c.text||'').join('') || 'No response';
-    resp.className = 'agent-response visible';
-    resp.textContent = text;
+    const text = data.content?.map(c=>c.text||'').join('') || 'No response received.';
+
+    AGENT_HISTORY.push({ role: 'assistant', content: text });
+
+    // Replace loading with actual response
+    loadingDiv.style.cssText = 'margin-bottom:12px;padding:12px 14px;background:var(--card2);border:1px solid var(--border);border-radius:4px 10px 10px 10px;font-size:13px;line-height:1.7;white-space:pre-wrap';
+    loadingDiv.textContent = text;
+
   } catch(e) {
-    resp.className = 'agent-response visible';
-    resp.textContent = '⚠️ Error reaching AI. Check connection.';
+    loadingDiv.textContent = '⚠️ Error reaching AI. Check connection.';
   }
+
+  resp.scrollTop = resp.scrollHeight;
 }
 
 // ── TASKS ────────────────────────────────────────────────────
