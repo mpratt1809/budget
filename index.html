@@ -1566,27 +1566,14 @@ window.saveReviewedTransactions = async function() {
       });
     }
 
-    // 3. Save transactions — parallel reads then parallel writes
-    const months = Object.keys(byMonth);
-    btn.textContent = `Reading existing data…`;
-
-    // Read all affected months in parallel
-    const existingDocs = await Promise.all(
-      months.map(month => getDoc(doc(db, 'transactions', month)))
-    );
-
+    // 3. Save transactions — write directly per account to avoid read timeouts
     btn.textContent = `Writing transactions…`;
-
-    // Merge and write all months in parallel
-    await Promise.all(months.map((month, i) => {
-      const existingTxs = existingDocs[i].exists() ? (existingDocs[i].data().transactions || []) : [];
-      const txMap = {};
-      for (const t of existingTxs) txMap[t.id] = t;
-      for (const t of byMonth[month]) txMap[t.id] = t;
+    await Promise.all(Object.entries(byMonth).map(([month, txs]) => {
+      // Store transactions per-account to avoid needing to read and merge
       return setDoc(doc(db, 'transactions', month), {
-        transactions: Object.values(txMap),
+        [`by_account_${p.account}`]: txs,
         updatedAt: new Date().toISOString()
-      });
+      }, { merge: true });
     }));
 
     // 4. Save payments — write directly without read-merge to avoid timeouts
@@ -1595,6 +1582,7 @@ window.saveReviewedTransactions = async function() {
       btn.textContent = `Writing deposits…`;
       const payByMonth = {};
       for (const pm of payments) {
+        if (!pm.date) { console.warn('Skipping payment with no date:', pm); continue; }
         const month = pm.date.slice(0,7);
         if (!payByMonth[month]) payByMonth[month] = [];
         payByMonth[month].push({
@@ -1604,17 +1592,19 @@ window.saveReviewedTransactions = async function() {
           accountLabel: p.accountLabel
         });
       }
-      // Use setDoc with merge:true to upsert without reading first
-      await Promise.all(Object.entries(payByMonth).map(([month, pms]) => {
-        // Build a map keyed by ID for this upload only
-        const pmMap = {};
-        for (const pm of pms) pmMap[pm.id] = pm;
-        // We use a sub-field keyed by account to avoid overwriting other accounts' payments
-        return setDoc(doc(db, 'payments', month), {
-          [`by_account_${p.account}`]: Object.values(pmMap),
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
-      }));
+      try {
+        await Promise.all(Object.entries(payByMonth).map(([month, pms]) => {
+          const pmMap = {};
+          for (const pm of pms) pmMap[pm.id] = pm;
+          return setDoc(doc(db, 'payments', month), {
+            [`by_account_${p.account}`]: Object.values(pmMap),
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }));
+      } catch(payErr) {
+        console.error('Payments write failed:', payErr);
+        throw new Error('Deposits save failed: ' + payErr.message);
+      }
     }
 
     // 5. Refresh the cash flow display
@@ -1643,13 +1633,22 @@ async function loadTransactionsForMonth(month) {
       getDoc(doc(db, 'transactions', month)),
       getDoc(doc(db, 'payments', month))
     ]);
-    CURRENT_MONTH_TRANSACTIONS = txSnap.exists() ? (txSnap.data().transactions || []) : [];
-    // Payments now stored per-account as by_account_boa, by_account_ufcu etc.
-    // Flatten all account arrays into one combined list
+    // Transactions: flatten all by_account_* fields + legacy transactions array
+    if (txSnap.exists()) {
+      const data = txSnap.data();
+      const allTxs = [];
+      if (data.transactions) allTxs.push(...data.transactions);
+      for (const [key, val] of Object.entries(data)) {
+        if (key.startsWith('by_account_') && Array.isArray(val)) allTxs.push(...val);
+      }
+      CURRENT_MONTH_TRANSACTIONS = allTxs;
+    } else {
+      CURRENT_MONTH_TRANSACTIONS = [];
+    }
+    // Payments: flatten all by_account_* fields + legacy payments array
     if (pmSnap.exists()) {
       const data = pmSnap.data();
       const allPms = [];
-      // Support both old format (payments array) and new format (by_account_* fields)
       if (data.payments) allPms.push(...data.payments);
       for (const [key, val] of Object.entries(data)) {
         if (key.startsWith('by_account_') && Array.isArray(val)) allPms.push(...val);
@@ -1781,15 +1780,18 @@ window.editTxCategory = async function(index, category, selectEl) {
     await saveMerchantRules();
   }
 
-  // Save updated transactions to Firestore
+  // Save updated transactions to Firestore — rewrite this account's transactions for the month
   try {
-    const ref = doc(db, 'transactions', SELECTED_MONTH);
-    const existing = await getDoc(ref);
-    const allTxs = existing.exists() ? (existing.data().transactions || []) : [];
-    // Replace the transaction with matching id
     const tx = CURRENT_MONTH_TRANSACTIONS[index];
-    const updatedAll = allTxs.map(t => t.id === tx.id ? { ...t, category } : t);
-    await setDoc(ref, { transactions: updatedAll, updatedAt: new Date().toISOString() });
+    const acct = tx.account || 'other';
+    // Update the in-memory transaction
+    CURRENT_MONTH_TRANSACTIONS[index].category = category;
+    // Get all transactions for this account in this month
+    const acctTxs = CURRENT_MONTH_TRANSACTIONS.filter(t => (t.account || 'other') === acct);
+    await setDoc(doc(db, 'transactions', SELECTED_MONTH), {
+      [`by_account_${acct}`]: acctTxs,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
     showToast('Category updated ✓', 'ok');
     renderSpending();
   } catch(e) {
