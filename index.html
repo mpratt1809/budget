@@ -354,7 +354,13 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
           <div class="modal-title" id="review-title">📋 Review Transactions</div>
           <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:14px" id="review-subtitle"></div>
 
-          <!-- Payments section -->
+          <!-- Card payments section (credit cards only — not income) -->
+          <div id="review-card-payments-section" style="display:none;margin-bottom:16px">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">💳 Payments Made to This Card <span style="color:var(--muted);font-weight:normal;letter-spacing:0">(not counted as income)</span></div>
+            <div id="review-card-payments-list" style="display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+
+          <!-- Deposits/credits section -->
           <div id="review-payments-section" style="display:none;margin-bottom:16px">
             <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">💰 Deposits & Credits — classify each one</div>
             <div id="review-payments-list" style="display:flex;flex-direction:column;gap:4px"></div>
@@ -1068,13 +1074,26 @@ window.shiftSelectedMonth = function(dir) {
 
 function renderCashFlow() {
   // 5-bucket model
-  const paycheckTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='Paycheck').reduce((s,p)=>s+(p.amount||0),0);
-  const fsaTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='FSA').reduce((s,p)=>s+(p.amount||0),0);
-  const checkTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='CheckDeposit').reduce((s,p)=>s+(p.amount||0),0);
-  const otherIncomeManual = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0),0);
-  const transferInTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='TransferIn').reduce((s,p)=>s+(p.amount||0),0);
-  const cardPaymentTotal = CURRENT_MONTH_PAYMENTS.filter(p=>p.type==='CreditCardPayment').reduce((s,p)=>s+(p.amount||0),0);
-  const transferOutTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>t.category==='Transfer Out').reduce((s,t)=>s+(t.amount||0),0);
+  const paycheckTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'Paycheck')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  const fsaTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'FSA')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  const checkTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'CheckDeposit')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  const otherIncomeManual = OTHER_INCOME.reduce((s,i)=>s+(Number(i.amount)||0), 0);
+  const transferInTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'TransferIn')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  const cardPaymentTotal = CURRENT_MONTH_PAYMENTS
+    .filter(p => p.type === 'CreditCardPayment')
+    .reduce((s,p) => s+(p.amount||0), 0);
+  // CardPaymentReceived = payments made to credit cards (from CC statements) — NOT income, excluded entirely
+  const transferOutTotal = CURRENT_MONTH_TRANSACTIONS
+    .filter(t => t.category === 'Transfer Out')
+    .reduce((s,t) => s+(t.amount||0), 0);
   const totalIncome = paycheckTotal + fsaTotal + checkTotal + otherIncomeManual;
   const fixedTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>t.category==='Fixed Bill'||t.category==='Subscription').reduce((s,t)=>s+(t.amount||0),0);
   const variableTotal = CURRENT_MONTH_TRANSACTIONS.filter(t=>!['Fixed Bill','Subscription','Transfer Out','Credit Card Payment'].includes(t.category)).reduce((s,t)=>s+(t.amount||0),0);
@@ -1293,7 +1312,8 @@ Return ONLY valid JSON, no markdown:
   "statementStart": "YYYY-MM-DD",
   "statementEnd": "YYYY-MM-DD",
   "transactions": [{"date": "YYYY-MM-DD", "merchant": "merchant name", "amount": 12.34, "category": "Groceries"}],
-  "payments": [{"date": "YYYY-MM-DD", "description": "description", "amount": 500.00, "type": "Paycheck"}]
+  "payments": [{"date": "YYYY-MM-DD", "description": "description", "amount": 500.00, "type": "Paycheck"}],
+  "cardPayments": [{"date": "YYYY-MM-DD", "description": "Payment Thank You-Mobile", "amount": 800.00}]
 }
 
 ═══ STEP 1: IDENTIFY ACCOUNT TYPE ═══
@@ -1303,8 +1323,11 @@ CHECKING/DEBIT ACCOUNT (Bank of America, UFCU):
 • payments array = ONLY money coming INTO the account (direct deposits, paychecks, Zelle received from others, tax refunds, FSA reimbursements, transfers from your own savings, overdraft protection)
 
 CREDIT CARD ACCOUNT (Chase, Citi, Discover, Synchrony):
-• transactions array = charges/purchases made on the card
-• payments array = payments made TO the card to pay it down
+• transactions array = ALL charges/purchases made on the card (money spent)
+• cardPayments array = payments made TO the card (Payment Thank You, mobile payments, autopay) — these are NOT income, just debt reduction
+• payments array = ONLY true credits: merchant refunds, cashback credits, rewards statement credits. These reduce your balance.
+
+CRITICAL FOR CREDIT CARDS: "Payment Thank You", "Payment Thank You-Mobile", "AutoPay", "Online Payment" entries go in cardPayments, NOT payments. They are NEVER income.
 
 ═══ STEP 2: FOR CHECKING ACCOUNTS — CRITICAL RULES ═══
 
@@ -1358,8 +1381,22 @@ SPECIFIC MERCHANTS:
 - HOBBYLOBBY = Shopping & Amazon
 - BOULDIN ACRES = Dining Out & Delivery
 - SHORTWAVE EAST = Entertainment & Subscriptions
+- HOME CHEF = Groceries
+- BESPOKE POST = Shopping & Amazon
+- VIVINT = Fixed Bill
+- AT&T = Fixed Bill
+- AUSTIN WOMENS BOXING = Subscription
+- TANNENBAUM PSYCHOTHERAPY = Therapy
 
-Rules: amount always positive. Use transaction date not posting date.`,
+CHASE CREDIT CARD SPECIFIC:
+- BALANCE TRANSFER TO * = Transfer Out (debt restructuring, not spending)
+- TRANSACTION FEE (on same date as balance transfer) = Fixed Bill (balance transfer fee)
+- PLAN FEE - * = Fixed Bill (Chase Pay Over Time interest/fee — treat like interest charge)
+- *RETURN/CREDIT* with negative amount = include in transactions with negative amount (it's a refund that offsets spending)
+- ANNUAL MEMBERSHIP FEE = Fixed Bill
+- FOREIGN TRANSACTION FEE = Fixed Bill
+
+Rules: amount always positive EXCEPT for refunds/credits which should have negative amounts. Use transaction date not posting date.`,
         messages: [{
           role: 'user',
           content: [
@@ -1427,7 +1464,26 @@ function showReviewScreen() {
   document.getElementById('review-subtitle').textContent =
     `${p.statementStart} → ${p.statementEnd} · ${p.transactions.length} transactions · affects ${monthsAffected.join(', ')}`;
 
-  // Payments section
+  // Card payments section (credit card statements only — not income)
+  const cardPayments = p.cardPayments || [];
+  const cardPaySection = document.getElementById('review-card-payments-section');
+  const cardPayList = document.getElementById('review-card-payments-list');
+  if (cardPayments.length && cardPaySection) {
+    cardPaySection.style.display = 'block';
+    cardPayList.innerHTML = cardPayments.map(pm => `
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:7px 10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(pm.description||'Payment')}</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${pm.date}</div>
+        </div>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">$${Number(pm.amount).toFixed(2)}</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-left:8px">not counted as income</span>
+      </div>`).join('');
+  } else if (cardPaySection) {
+    cardPaySection.style.display = 'none';
+  }
+
+  // Payments/deposits section (refunds, cashback — may be income)
   const payments = p.payments || [];
   const paymentsSection = document.getElementById('review-payments-section');
   if (payments.length) {
@@ -1608,11 +1664,15 @@ window.saveReviewedTransactions = async function() {
     }));
 
     // 4. Save payments — write directly without read-merge to avoid timeouts
+    // 4. Save payments (refunds/credits) and card payments separately
     const payments = p.payments || [];
-    if (payments.length) {
+    const cardPayments = p.cardPayments || [];
+    const allDeposits = [...payments, ...cardPayments.map(cp => ({...cp, type: 'CardPaymentReceived'}))];
+
+    if (allDeposits.length) {
       btn.textContent = `Writing deposits…`;
       const payByMonth = {};
-      for (const pm of payments) {
+      for (const pm of allDeposits) {
         if (!pm.date) { console.warn('Skipping payment with no date:', pm); continue; }
         const month = pm.date.slice(0,7);
         if (!payByMonth[month]) payByMonth[month] = [];
