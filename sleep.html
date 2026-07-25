@@ -268,6 +268,7 @@ canvas{width:100%!important;height:120px!important}
       <button onclick="shiftStatDate(-1)" style="background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;width:24px;height:24px;cursor:pointer;display:flex;align-items:center;justify-content:center">‹</button>
       <button onclick="shiftStatDate(1)" style="background:var(--card2);border:1px solid var(--border);border-radius:5px;color:var(--muted);font-size:12px;width:24px;height:24px;cursor:pointer;display:flex;align-items:center;justify-content:center">›</button>
       <button onclick="loadStatDate(TODAY_KEY)" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:9px;padding:3px 7px;cursor:pointer" id="btn-stat-today">Today</button>
+      <button onclick="manualWhoopSync(this)" style="background:var(--accent);border:none;border-radius:5px;color:#fff;font-family:var(--mono);font-size:9px;padding:3px 7px;cursor:pointer" id="btn-sync-now">↻ Sync</button>
     </div>
   </div>
 
@@ -647,6 +648,28 @@ window.saveCutoffSetting = async function(val) {
   }
 };
 
+// ── MANUAL WHOOP SYNC ──
+window.manualWhoopSync = async function(btn) {
+  const orig = btn.textContent;
+  btn.textContent = '↻ Syncing…';
+  btn.disabled = true;
+  try {
+    const resp = await fetch('https://pratt-automation-api.mpratt1809.workers.dev/whoop/sync');
+    const data = await resp.json();
+    if (data.synced) {
+      showToast('Synced ✓', 'ok');
+      await loadAllLogs();
+      await loadStatDate(TODAY_KEY);
+    } else {
+      showToast(data.reason || 'No new data from Whoop', 'err');
+    }
+  } catch(e) {
+    showToast('Sync failed — check connection', 'err');
+  }
+  btn.textContent = orig;
+  btn.disabled = false;
+};
+
 // ── STAT DATE NAVIGATION ──
 window.loadStatDate = async function(dateStr) {
   STAT_DATE = dateStr;
@@ -654,6 +677,8 @@ window.loadStatDate = async function(dateStr) {
   const todayBtn = document.getElementById('btn-stat-today');
   if (label) label.textContent = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}).toUpperCase();
   if (todayBtn) todayBtn.style.opacity = dateStr === TODAY_KEY ? '0.3' : '1';
+
+  if (!DB_READY) return; // Don't attempt Firestore reads before auth completes
 
   // Load morning log for this date
   const snap = await getDoc(doc(db, 'sleep_morning', dateStr));
@@ -1098,16 +1123,30 @@ window.setInsightWindow = function(days, el) {
 
 async function gatherSleepData(days) {
   const sorted = [...allLogs].sort((a,b)=>a.date.localeCompare(b.date)).slice(-days);
-  const eatingData = [], nightData = [], strainData = [];
-  for (const l of sorted) {
-    const eSnap = await getDoc(doc(db,'sleep_eating',l.date));
-    if (eSnap.exists()) eatingData.push({date:l.date,...eSnap.data()});
-    const nSnap = await getDoc(doc(db,'sleep_night',l.date));
-    if (nSnap.exists()) nightData.push({date:l.date,...nSnap.data()});
-    const sSnap = await getDoc(doc(db,'sleep_strain',l.date));
-    if (sSnap.exists()) strainData.push({date:l.date,...sSnap.data()});
-  }
-  return { days, morningLogs: sorted, eatingLogs: eatingData, nightLogs: nightData, strainLogs: strainData };
+
+  // Fetch all supplementary data in parallel
+  const [eatingSnaps, nightSnaps, strainSnaps] = await Promise.all([
+    Promise.all(sorted.map(l => getDoc(doc(db,'sleep_eating',l.date)))),
+    Promise.all(sorted.map(l => getDoc(doc(db,'sleep_night',l.date)))),
+    Promise.all(sorted.map(l => getDoc(doc(db,'sleep_strain',l.date))))
+  ]);
+
+  const eatingData = eatingSnaps.filter(s=>s.exists()).map(s=>({date:s.id,...s.data()}));
+  const nightData = nightSnaps.filter(s=>s.exists()).map(s=>({date:s.id,...s.data()}));
+  const strainData = strainSnaps.filter(s=>s.exists()).map(s=>({date:s.id,strain:s.data().strain}));
+
+  // Summarize morning logs to just key metrics
+  const morningLogs = sorted.map(l => ({
+    date: l.date,
+    hrv: l.hrv,
+    recovery: l.recovery,
+    restingHR: l.restingHR,
+    sleepPct: l.sleepPct,
+    deep: l.deep,
+    totalSleep: l.totalSleep
+  }));
+
+  return { days, morningLogs, eatingLogs: eatingData, nightLogs: nightData, strainLogs: strainData };
 }
 
 function buildSystemPrompt(data) {
