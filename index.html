@@ -203,6 +203,13 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 .p-none{background:rgba(255,255,255,.15)}
 .task-micro-btn{width:16px;height:16px;border-radius:3px;border:none;background:transparent;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:opacity .12s}
 .task-micro-btn:hover{opacity:1;background:rgba(255,255,255,.1)}
+.task-grip{font-size:10px;line-height:1;cursor:grab;opacity:.25;flex-shrink:0;letter-spacing:-1px;transition:opacity .12s}
+.task-item:hover .task-grip{opacity:.5}
+.task-item.task-dragging{opacity:.4}
+.sticky-tasks.task-drop-target{background:rgba(124,106,247,.08);outline:1px dashed var(--accent);outline-offset:-2px;border-radius:6px}
+.voice-mic-btn{border-radius:50px!important;padding:14px 30px!important;font-size:14px!important}
+@keyframes vpulse{0%,100%{opacity:1}50%{opacity:.4}}
+.voice-live{animation:vpulse 1.4s ease-in-out infinite}
 .sticky-footer{padding:5px 10px 8px;display:flex;gap:4px}
 .add-task-btn{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid rgba(255,255,255,.1);background:transparent;cursor:pointer;transition:all .15s;opacity:.5}
 .add-task-btn:hover{opacity:1;border-color:rgba(255,255,255,.3)}
@@ -544,9 +551,21 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
       <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;margin-left:4px">
         <input type="checkbox" id="show-done-cb" onchange="toggleShowDone(this)" style="accent-color:var(--accent)"> Show done
       </label>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="openVoiceTasks()">🎤 Voice Add</button>
     </div>
     <div class="tasks-board" id="tasks-board"></div>
     <div style="margin-top:12px"><button class="btn btn-ghost" onclick="addBoard()">+ New Board</button></div>
+  </div>
+
+  <!-- ══ VOICE ADD TASKS MODAL ══ -->
+  <div class="modal-bg" id="voice-task-modal">
+    <div class="modal modal-wide">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="modal-title" style="margin-bottom:0">🎤 Voice Add Tasks</div>
+        <button onclick="closeVoiceTasks()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+      </div>
+      <div id="voice-task-body"></div>
+    </div>
   </div>
 
   <div class="view" id="view-settings">
@@ -2173,19 +2192,22 @@ function renderTasksBoard() {
           <button class="sticky-btn" onclick="deleteBoard('${b.id}')" style="color:${col.text}">✕</button>
         </div>
       </div>
-      ${b.collapsed?'':`<div class="sticky-tasks" id="tasks-${b.id}">
+      ${b.collapsed?'':`<div class="sticky-tasks" id="tasks-${b.id}"
+        ondragover="taskDragOver(event,'${b.id}')" ondragleave="taskDragLeave(event,'${b.id}')" ondrop="taskDrop(event,'${b.id}')">
         ${visibleTasks.length===0&&total===0?`<div style="padding:8px 2px;font-size:11px;color:${col.text}30;text-align:center">Empty</div>`:''}
         ${visibleTasks.map(t=>{
           const ds=getDueStatus(t.due);
-          return `<div class="task-item" style="padding:3px 2px">
-            <div class="priority-dot p-${t.priority||'none'}" onclick="cycleTaskPriority('${b.id}','${t.id}')" title="Priority: ${t.priority||'none'}"></div>
-            <input type="checkbox" class="task-check" ${t.done?'checked':''} onchange="toggleTask('${b.id}','${t.id}')">
+          return `<div class="task-item" draggable="true" ondragstart="taskDragStart(event,'${b.id}','${t.id}')" ondragend="taskDragEnd(event)" style="padding:3px 2px">
+            <span class="task-grip" onmousedown="event.stopPropagation()">⋮⋮</span>
+            <div class="priority-dot p-${t.priority||'none'}" onclick="cycleTaskPriority('${b.id}','${t.id}')" onmousedown="event.stopPropagation()" title="Priority: ${t.priority||'none'}"></div>
+            <input type="checkbox" class="task-check" ${t.done?'checked':''} onchange="toggleTask('${b.id}','${t.id}')" onmousedown="event.stopPropagation()">
             <textarea class="task-text${t.done?' done':''}" style="color:${col.text};width:100%" rows="1"
-              oninput="updateTaskText('${b.id}','${t.id}',this.value);autoResize(this)" onfocus="autoResize(this)">${escHtml(t.text||'')}</textarea>
+              oninput="updateTaskText('${b.id}','${t.id}',this.value);autoResize(this)" onfocus="autoResize(this)"
+              onmousedown="event.stopPropagation()" ondragstart="event.stopPropagation()">${escHtml(t.text||'')}</textarea>
             ${t.due?`<span class="task-due-badge ${ds}">${formatDue(t.due)}</span>`:''}
             <div class="task-actions">
-              <button class="task-micro-btn" onclick="openDatePicker('${b.id}','${t.id}')" style="color:${col.text}" title="Set date">📅</button>
-              <button class="task-micro-btn" onclick="deleteTask('${b.id}','${t.id}')" style="color:${col.text}" title="Delete">✕</button>
+              <button class="task-micro-btn" onclick="openDatePicker('${b.id}','${t.id}')" onmousedown="event.stopPropagation()" style="color:${col.text}" title="Set date">📅</button>
+              <button class="task-micro-btn" onclick="deleteTask('${b.id}','${t.id}')" onmousedown="event.stopPropagation()" style="color:${col.text}" title="Delete">✕</button>
             </div>
           </div>`;
         }).join('')}
@@ -2264,6 +2286,164 @@ window.dragOver  = function(e, bid) { e.preventDefault(); e.dataTransfer.dropEff
 window.dragLeave = function(e, bid) { const el=document.querySelector(`.sticky[data-id="${bid}"]`); if(el) el.classList.remove('drag-over'); };
 window.dragDrop  = async function(e, bid) { e.preventDefault(); if (!dragSrcId || dragSrcId === bid) return; const srcIdx=TASKS.boards.findIndex(b=>b.id===dragSrcId); const tgtIdx=TASKS.boards.findIndex(b=>b.id===bid); if (srcIdx<0||tgtIdx<0) return; const [moved]=TASKS.boards.splice(srcIdx,1); TASKS.boards.splice(tgtIdx,0,moved); await saveTasks(); renderTasksBoard(); };
 window.dragEnd   = function(e, bid) { document.querySelectorAll('.sticky').forEach(s=>{ s.classList.remove('dragging'); s.classList.remove('drag-over'); }); dragSrcId = null; };
+
+// ── PER-TASK DRAG & DROP (moving a task between boards) ────────
+// Kept separate from the board-drag vars above (dragSrcId) since a task drag
+// and a board drag are mutually exclusive gestures happening on nested elements.
+let taskDragSrc = null; // { boardId, taskId }
+window.taskDragStart = function(e, bid, tid) {
+  e.stopPropagation(); // don't also trigger the parent board's dragStart
+  taskDragSrc = { boardId: bid, taskId: tid };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', tid);
+  const el = e.currentTarget; if (el) setTimeout(()=>el.classList.add('task-dragging'), 0);
+};
+window.taskDragOver = function(e, bid) {
+  if (!taskDragSrc) return; // not dragging a task — let the board-level dragOver (bubbled) handle board reordering
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  const el = document.getElementById('tasks-'+bid);
+  if (el) el.classList.add('task-drop-target');
+};
+window.taskDragLeave = function(e, bid) {
+  const el = document.getElementById('tasks-'+bid);
+  if (el) el.classList.remove('task-drop-target');
+};
+window.taskDrop = async function(e, bid) {
+  if (!taskDragSrc) return; // not a task drop — let it bubble to the board-level dragDrop
+  e.preventDefault();
+  e.stopPropagation();
+  const el = document.getElementById('tasks-'+bid);
+  if (el) el.classList.remove('task-drop-target');
+  const { boardId: srcBid, taskId: tid } = taskDragSrc;
+  taskDragSrc = null;
+  if (srcBid === bid) return; // dropped back on its own board — no-op
+  const srcBoard = TASKS.boards.find(b=>b.id===srcBid);
+  const tgtBoard = TASKS.boards.find(b=>b.id===bid);
+  if (!srcBoard || !tgtBoard) return;
+  const idx = srcBoard.tasks.findIndex(t=>t.id===tid);
+  if (idx < 0) return;
+  const [moved] = srcBoard.tasks.splice(idx, 1);
+  tgtBoard.tasks.push(moved);
+  await saveTasks();
+  renderTasksBoard();
+  showToast(`Moved to "${tgtBoard.title||'Untitled'}" ✓`, 'ok');
+};
+window.taskDragEnd = function(e) {
+  document.querySelectorAll('.task-item').forEach(el=>el.classList.remove('task-dragging'));
+  document.querySelectorAll('.sticky-tasks').forEach(el=>el.classList.remove('task-drop-target'));
+  taskDragSrc = null;
+};
+
+// ── VOICE ADD TASKS ─────────────────────────────────────────────
+const DAILY_BOARD_TITLE = 'Tasks for the day';
+let taskVoiceOn = false, taskRecog = null, taskVFinal = '';
+const TASK_VOICE_SYSTEM_PROMPT = `You are a task-extraction assistant. You will receive a rambling voice transcript of someone listing things they need to do — it may be out of order, include filler words, or run items together.
+
+Split it into a JSON array of separate, concise task strings, one per distinct to-do item. Tighten filler words but preserve her actual wording and intent — don't add details she didn't say.
+
+Return ONLY a JSON array of strings, nothing else — no explanation, no markdown fences, no due dates, no priorities. Example: ["Get milk", "Call the vet about Butternut's allergy meds", "Order the office outlets"]`;
+
+window.openVoiceTasks = function() {
+  taskVFinal = ''; taskVoiceOn = false;
+  document.getElementById('voice-task-modal').classList.add('open');
+  renderVoiceTaskModal();
+};
+window.closeVoiceTasks = function() {
+  if (taskRecog) { taskRecog.onend = null; try{ taskRecog.stop(); }catch(e){} }
+  taskVoiceOn = false; taskVFinal = '';
+  document.getElementById('voice-task-modal').classList.remove('open');
+};
+function renderVoiceTaskModal() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const supported = !!SR;
+  document.getElementById('voice-task-body').innerHTML = `
+    ${supported ? `
+      <p style="font-family:var(--sans);font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">Tap the mic and rattle off whatever's on your list — order doesn't matter. Tap again to pause. When you're done, hit "Add Tasks" and they'll land in your <strong style="color:var(--text)">${DAILY_BOARD_TITLE}</strong> board.</p>
+      <div style="text-align:center;margin-bottom:18px">
+        <button id="task-mic-btn" class="btn btn-primary voice-mic-btn" onclick="toggleTaskRec()">${taskVoiceOn?'⏸ Pause':'🎤 Start Talking'}</button>
+        <div id="task-vstatus" style="margin-top:8px;font-family:var(--mono);font-size:11px;color:${taskVoiceOn?'var(--accent2)':'var(--muted)'}" class="${taskVoiceOn?'voice-live':''}">${taskVoiceOn?'● Listening…':'Ready when you are'}</div>
+      </div>` : `
+      <p style="font-family:var(--sans);font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">Voice input isn't available in this browser right now. Type your list below instead — order doesn't matter — and "Add Tasks" will still split it out for you.</p>`}
+    <textarea id="task-vtext" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:var(--sans);font-size:13px;outline:none;min-height:110px;resize:vertical" placeholder="${supported?'Your words show up here as you talk…':'Type your to-dos here, in any order…'}">${escHtml(taskVFinal)}</textarea>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="closeVoiceTasks()">Cancel</button>
+      <button class="btn btn-primary" id="task-vproc-btn" onclick="processTaskVoice()">✨ Add Tasks</button>
+    </div>`;
+}
+window.toggleTaskRec = function() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  if (taskVoiceOn) {
+    taskVoiceOn = false;
+    if (taskRecog) { taskRecog.onend = null; try{ taskRecog.stop(); }catch(e){} }
+    renderVoiceTaskModal();
+    return;
+  }
+  taskVoiceOn = true;
+  taskRecog = new SR();
+  taskRecog.continuous = true;
+  taskRecog.interimResults = true;
+  taskRecog.lang = 'en-US';
+  taskRecog.onresult = e => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) { taskVFinal += (taskVFinal && !/\s$/.test(taskVFinal) ? ' ' : '') + t.trim(); }
+      else { interim += t; }
+    }
+    const ta = document.getElementById('task-vtext');
+    if (ta) ta.value = taskVFinal + (interim ? ' ' + interim : '');
+  };
+  taskRecog.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      showToast('Microphone access denied — check Settings > Safari > Microphone', 'err');
+      taskVoiceOn = false; renderVoiceTaskModal();
+    }
+    // 'no-speech' etc. are expected during pauses — onend below restarts automatically
+  };
+  taskRecog.onend = () => {
+    if (taskVoiceOn) { try{ taskRecog.start(); }catch(e){} } // iOS Safari stops after brief silence — restart to keep listening
+  };
+  try { taskRecog.start(); } catch(e) { showToast("Couldn't start the microphone",'err'); taskVoiceOn = false; }
+  renderVoiceTaskModal();
+};
+window.processTaskVoice = async function() {
+  const txt = document.getElementById('task-vtext')?.value.trim();
+  if (!txt) { showToast('Talk through your list first, or type it in','err'); return; }
+  if (taskRecog) { taskRecog.onend = null; try{ taskRecog.stop(); }catch(e){} }
+  taskVoiceOn = false;
+  const btn = document.getElementById('task-vproc-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Organizing…'; }
+  try {
+    const res = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, system: TASK_VOICE_SYSTEM_PROMPT, messages: [{ role: 'user', content: txt }] })
+    });
+    if (!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const raw = data.content?.map(c=>c.text||'').join('') || '[]';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const items = JSON.parse(clean);
+    if (!Array.isArray(items) || !items.length) throw new Error('no items parsed');
+
+    let board = TASKS.boards.find(b => b.title === DAILY_BOARD_TITLE);
+    if (!board) {
+      board = { id: makeId(), title: DAILY_BOARD_TITLE, color: 'blue', tasks: [], collapsed: false };
+      TASKS.boards.unshift(board);
+    }
+    items.forEach(text => { if (typeof text === 'string' && text.trim()) board.tasks.push({ id: makeId(), text: text.trim(), done: false, due: '', priority: 'none' }); });
+    await saveTasks();
+    renderTasksBoard();
+    closeVoiceTasks();
+    showToast(`Added ${items.length} task${items.length!==1?'s':''} to "${DAILY_BOARD_TITLE}" ✓`, 'ok');
+  } catch(err) {
+    showToast("Couldn't organize that — check your connection and try again", 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Add Tasks'; }
+  }
+};
 
 window.toggleCard  = function(id){ document.getElementById(id).classList.toggle('open'); };
 window.switchView  = function(view, btn){
