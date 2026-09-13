@@ -206,6 +206,8 @@ header{position:sticky;top:0;z-index:200;background:rgba(10,10,13,.92);backdrop-
 .task-grip{font-size:10px;line-height:1;cursor:grab;opacity:.25;flex-shrink:0;letter-spacing:-1px;transition:opacity .12s}
 .task-item:hover .task-grip{opacity:.5}
 .task-item.task-dragging{opacity:.4}
+.task-item.drop-before{box-shadow:0 -2px 0 0 var(--accent)}
+.task-item.drop-after{box-shadow:0 2px 0 0 var(--accent)}
 .sticky-tasks.task-drop-target{background:rgba(124,106,247,.08);outline:1px dashed var(--accent);outline-offset:-2px;border-radius:6px}
 .voice-mic-btn{border-radius:50px!important;padding:14px 30px!important;font-size:14px!important}
 @keyframes vpulse{0%,100%{opacity:1}50%{opacity:.4}}
@@ -2197,7 +2199,7 @@ function renderTasksBoard() {
         ${visibleTasks.length===0&&total===0?`<div style="padding:8px 2px;font-size:11px;color:${col.text}30;text-align:center">Empty</div>`:''}
         ${visibleTasks.map(t=>{
           const ds=getDueStatus(t.due);
-          return `<div class="task-item" draggable="true" ondragstart="taskDragStart(event,'${b.id}','${t.id}')" ondragend="taskDragEnd(event)" style="padding:3px 2px">
+          return `<div class="task-item" draggable="true" ondragstart="taskDragStart(event,'${b.id}','${t.id}')" ondragend="taskDragEnd(event)" ondragover="taskItemDragOver(event,'${b.id}','${t.id}')" ondragleave="taskItemDragLeave(event)" style="padding:3px 2px">
             <span class="task-grip" onmousedown="event.stopPropagation()">⋮⋮</span>
             <div class="priority-dot p-${t.priority||'none'}" onclick="cycleTaskPriority('${b.id}','${t.id}')" onmousedown="event.stopPropagation()" title="Priority: ${t.priority||'none'}"></div>
             <input type="checkbox" class="task-check" ${t.done?'checked':''} onchange="toggleTask('${b.id}','${t.id}')" onmousedown="event.stopPropagation()">
@@ -2206,7 +2208,6 @@ function renderTasksBoard() {
               onmousedown="event.stopPropagation()" ondragstart="event.stopPropagation()">${escHtml(t.text||'')}</textarea>
             ${t.due?`<span class="task-due-badge ${ds}">${formatDue(t.due)}</span>`:''}
             <div class="task-actions">
-              <button class="task-micro-btn" onclick="openDatePicker('${b.id}','${t.id}')" onmousedown="event.stopPropagation()" style="color:${col.text}" title="Set date">📅</button>
               <button class="task-micro-btn" onclick="deleteTask('${b.id}','${t.id}')" onmousedown="event.stopPropagation()" style="color:${col.text}" title="Delete">✕</button>
             </div>
           </div>`;
@@ -2287,10 +2288,11 @@ window.dragLeave = function(e, bid) { const el=document.querySelector(`.sticky[d
 window.dragDrop  = async function(e, bid) { e.preventDefault(); if (!dragSrcId || dragSrcId === bid) return; const srcIdx=TASKS.boards.findIndex(b=>b.id===dragSrcId); const tgtIdx=TASKS.boards.findIndex(b=>b.id===bid); if (srcIdx<0||tgtIdx<0) return; const [moved]=TASKS.boards.splice(srcIdx,1); TASKS.boards.splice(tgtIdx,0,moved); await saveTasks(); renderTasksBoard(); };
 window.dragEnd   = function(e, bid) { document.querySelectorAll('.sticky').forEach(s=>{ s.classList.remove('dragging'); s.classList.remove('drag-over'); }); dragSrcId = null; };
 
-// ── PER-TASK DRAG & DROP (moving a task between boards) ────────
+// ── PER-TASK DRAG & DROP (reordering within a board AND moving between boards) ────
 // Kept separate from the board-drag vars above (dragSrcId) since a task drag
 // and a board drag are mutually exclusive gestures happening on nested elements.
-let taskDragSrc = null; // { boardId, taskId }
+let taskDragSrc = null;    // { boardId, taskId }
+let taskDropTarget = null; // { boardId, taskId, before } — taskId is null when hovering empty space (means "append at end")
 window.taskDragStart = function(e, bid, tid) {
   e.stopPropagation(); // don't also trigger the parent board's dragStart
   taskDragSrc = { boardId: bid, taskId: tid };
@@ -2298,11 +2300,34 @@ window.taskDragStart = function(e, bid, tid) {
   e.dataTransfer.setData('text/plain', tid);
   const el = e.currentTarget; if (el) setTimeout(()=>el.classList.add('task-dragging'), 0);
 };
+// Fires while hovering directly over another task — pinpoints insert-before vs insert-after
+// based on which half of that task's row the pointer is over, and stops the event from
+// bubbling up to the container-level handler below (which represents "empty space").
+window.taskItemDragOver = function(e, bid, tid) {
+  if (!taskDragSrc) return;
+  e.preventDefault();
+  e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.task-item').forEach(el=>el.classList.remove('drop-before','drop-after'));
+  const rect = e.currentTarget.getBoundingClientRect();
+  const before = (e.clientY - rect.top) < rect.height / 2;
+  taskDropTarget = { boardId: bid, taskId: tid, before };
+  e.currentTarget.classList.add(before ? 'drop-before' : 'drop-after');
+  const container = document.getElementById('tasks-'+bid);
+  if (container) container.classList.add('task-drop-target');
+};
+window.taskItemDragLeave = function(e) {
+  e.currentTarget.classList.remove('drop-before','drop-after');
+};
+// Fires when hovering the board's empty space (below the last task, or an empty board) —
+// only runs when taskItemDragOver above didn't already claim the event via stopPropagation.
 window.taskDragOver = function(e, bid) {
   if (!taskDragSrc) return; // not dragging a task — let the board-level dragOver (bubbled) handle board reordering
   e.preventDefault();
   e.stopPropagation();
   e.dataTransfer.dropEffect = 'move';
+  taskDropTarget = { boardId: bid, taskId: null, before: false };
+  document.querySelectorAll('.task-item').forEach(el=>el.classList.remove('drop-before','drop-after'));
   const el = document.getElementById('tasks-'+bid);
   if (el) el.classList.add('task-drop-target');
 };
@@ -2316,24 +2341,36 @@ window.taskDrop = async function(e, bid) {
   e.stopPropagation();
   const el = document.getElementById('tasks-'+bid);
   if (el) el.classList.remove('task-drop-target');
+  document.querySelectorAll('.task-item').forEach(x=>x.classList.remove('drop-before','drop-after'));
+
   const { boardId: srcBid, taskId: tid } = taskDragSrc;
-  taskDragSrc = null;
-  if (srcBid === bid) return; // dropped back on its own board — no-op
+  const target = taskDropTarget;
+  taskDragSrc = null; taskDropTarget = null;
+
   const srcBoard = TASKS.boards.find(b=>b.id===srcBid);
   const tgtBoard = TASKS.boards.find(b=>b.id===bid);
   if (!srcBoard || !tgtBoard) return;
-  const idx = srcBoard.tasks.findIndex(t=>t.id===tid);
-  if (idx < 0) return;
-  const [moved] = srcBoard.tasks.splice(idx, 1);
-  tgtBoard.tasks.push(moved);
+  const srcIdx = srcBoard.tasks.findIndex(t=>t.id===tid);
+  if (srcIdx < 0) return;
+
+  const [moved] = srcBoard.tasks.splice(srcIdx, 1); // remove first, then figure out where it lands —
+                                                      // this keeps same-board reorders and cross-board
+                                                      // moves using identical insertion logic below
+  let insertAt = tgtBoard.tasks.length; // default: end of the target board's list
+  if (target && target.boardId === bid && target.taskId) {
+    const tIdx = tgtBoard.tasks.findIndex(t=>t.id===target.taskId);
+    if (tIdx >= 0) insertAt = target.before ? tIdx : tIdx + 1;
+  }
+  tgtBoard.tasks.splice(insertAt, 0, moved);
+
   await saveTasks();
   renderTasksBoard();
-  showToast(`Moved to "${tgtBoard.title||'Untitled'}" ✓`, 'ok');
+  if (srcBid !== bid) showToast(`Moved to "${tgtBoard.title||'Untitled'}" ✓`, 'ok');
 };
 window.taskDragEnd = function(e) {
-  document.querySelectorAll('.task-item').forEach(el=>el.classList.remove('task-dragging'));
+  document.querySelectorAll('.task-item').forEach(el=>el.classList.remove('task-dragging','drop-before','drop-after'));
   document.querySelectorAll('.sticky-tasks').forEach(el=>el.classList.remove('task-drop-target'));
-  taskDragSrc = null;
+  taskDragSrc = null; taskDropTarget = null;
 };
 
 // ── VOICE ADD TASKS ─────────────────────────────────────────────
